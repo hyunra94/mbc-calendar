@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-하이테크 플랫폼 교육 일정</title>
+<link rel="icon" href="https://hyunra94.github.io/assets/favicon.png">
+<meta property="og:title" content="K-하이테크 플랫폼 교육 일정">
+<meta property="og:image" content="https://hyunra94.github.io/assets/og-default.png">
+<meta property="og:url" content="https://hyunra94.github.io/[레포명]">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
+.page{max-width:700px;margin:0 auto;padding:24px 20px 40px}
+.toggle-bar{display:flex;border:1.5px solid #e0d0f0;border-radius:24px;overflow:hidden;width:fit-content;margin-bottom:22px}
+.tb{padding:8px 24px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:500;cursor:pointer;background:transparent;border:none;color:#aaa;transition:all .2s}
+.tb.on{background:#f0e8ff;color:#7a4db5;font-weight:700}
+.sec{display:none}.sec.on{display:block}
+.cal-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
+.yv{font-size:12px;font-weight:700;color:#ccc;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:3px}
+.mn{font-size:44px;font-weight:700;color:#1a1a1a;letter-spacing:-2px}
+.m2{font-size:44px;font-weight:700;color:#e8e8e8;margin-left:auto;letter-spacing:-2px}
+.dlabels{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
+.dl{text-align:center;font-size:11px;font-weight:500;color:#bbb;padding:4px 0}
+.dl.sun{color:#e06060}.dl.sat{color:#6688cc}
+.wrow{border-top:1px solid #f0f0f0;position:relative}
+.dnums{display:grid;grid-template-columns:repeat(7,1fr)}
+.dn{text-align:center;padding:9px 2px 7px;font-size:12px;font-weight:500;color:#333}
+.dn.sun{color:#e06060}.dn.sat{color:#6688cc}.dn.hol{color:#e06060}.dn.out{color:transparent}
+.barea{position:relative;overflow:visible}
+.bt{position:absolute;border-radius:5px}
+.bl{position:absolute;font-size:8.5px;font-weight:700;white-space:nowrap;pointer-events:none;text-align:center;overflow:hidden}
+.ep{position:absolute;border-radius:50%;border-width:2.5px;border-style:solid;background:#fff;z-index:3}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid #f0f0f0}
+.li{display:flex;align-items:center;gap:6px;font-size:10px;color:#999}
+.ld{width:22px;height:6px;border-radius:3px}
+.brand{text-align:right;font-size:10px;color:#ccc;margin-top:10px;font-style:italic}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{border-radius:12px;border:1px solid #f0ecf8;background:#fff;padding:14px 16px;display:flex;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.cbar{width:4px;border-radius:4px;flex-shrink:0}
+.cbody{flex:1;min-width:0}
+.cname{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
+.csub{font-size:11px;color:#bbb;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:10px;padding:3px 9px;border-radius:8px;font-weight:500}
+.cdates{margin-top:6px;font-size:10px;color:#ccc;line-height:1.9}
+.state{text-align:center;padding:40px;font-size:13px;color:#bbb}
+</style>
+</head>
+<body>
+<div class="page">
+<div id="loading" class="state">일정을 불러오는 중...</div>
+<div id="main" style="display:none">
+
+  <div class="toggle-bar">
+    <button class="tb on" onclick="sw('cal')">📅 캘린더</button>
+    <button class="tb" onclick="sw('list')">📋 목록</button>
+  </div>
+
+  <div id="cal" class="sec on">
+    <div class="cal-head">
+      <span class="yv" id="hYear">2026</span>
+      <span class="mn" id="hMonthName">May</span>
+      <span class="m2" id="hMonthNum">05</span>
+    </div>
+    <div class="dlabels">
+      <div class="dl sun">일</div><div class="dl">월</div><div class="dl">화</div>
+      <div class="dl">수</div><div class="dl">목</div><div class="dl">금</div><div class="dl sat">토</div>
+    </div>
+    <div id="weeks"></div>
+    <div class="legend" id="legend"></div>
+    <div class="brand">@Jeonju MBC K-HighTech Platform</div>
+  </div>
+
+  <div id="list" class="sec">
+    <div class="cards" id="cards"></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const WORKER_URL = 'https://YOUR_WORKER.YOUR_SUBDOMAIN.workers.dev';
+
+const FALLBACK = {
+  year: 2026, month: 5,
+  courses: [
+    { name:'드론 2기',             sub:'드론 조종 실기 교육',           color:'#9966cc', days:[9,10,16,17], times:["별도 안내"], detail:"주말 과정" },
+    { name:'생성형AI 기본 4회차',   sub:'AI프롬프트 & 비즈니스 융합 전략', color:'#2eaa82', days:[13],            times:['14:00–18:00'],  detail:'평일 4시간' },
+    { name:'실감콘텐츠 촬영 6회차', sub:'실감형 영상 촬영 실습',          color:'#4488cc', days:[12,13],          times:['09:00–18:00'],  detail:'화·수' },
+    { name:'프리미어 편집 4회차',   sub:'영상 편집 실무 과정',           color:'#d96b36', days:[18,19,20,21,22],  times:['14:00–18:00'],  detail:'평일 연속 5일' },
+  ]
+};
+
+const HOL_KR = {
+  '2026-5-1':'근로자의날','2026-5-5':'어린이날',
+  '2026-5-24':'부처님오신날','2026-5-25':'대체휴일'
+};
+const MONTHS=['','January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
+
+/* ─────────────────────────────────────
+   레이아웃 상수
+   BAR_H    : 바 두께 (px)
+   GAP      : 칼럼 경계에서 바 안쪽으로 당기는 여백 (%)
+              → 인접 과정 원이 같은 X에 겹치지 않도록 분리
+   EP       : 원 지름 (px)
+   SLOT_H   : 슬롯 한 칸 높이 (px)
+───────────────────────────────────── */
+const BAR_H  = 10;
+const GAP    = 1.2;   // %
+const EP     = 13;
+const EP_H   = EP / 2;
+const SLOT_H = 36;
+const CW     = 100 / 7;
+
+function getPos(day, sw) {
+  const o = sw + day - 1;
+  return { row: Math.floor(o / 7), col: o % 7 };
+}
+
+function getSegs(days, sw) {
+  const byRow = {};
+  days.forEach(d => {
+    const p = getPos(d, sw);
+    (byRow[p.row] = byRow[p.row] || []).push({ col: p.col, day: d });
+  });
+  const out = [];
+  Object.entries(byRow).forEach(([r, arr]) => {
+    arr.sort((a, b) => a.col - b.col);
+    let s = arr[0], e = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+      if (arr[i].col === e.col + 1) { e = arr[i]; }
+      else { out.push({ row: +r, sc: s.col, ec: e.col, sd: s.day, ed: e.day }); s = e = arr[i]; }
+    }
+    out.push({ row: +r, sc: s.col, ec: e.col, sd: s.day, ed: e.day });
+  });
+  return out;
+}
+
+function renderCalendar(year, month, courses) {
+  const startWday   = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const numRows     = Math.ceil((startWday + daysInMonth) / 7);
+
+  /* ── row별 bar 목록 ── */
+  const rowBars = Array.from({ length: numRows }, () => []);
+  courses.forEach((c, ci) => {
+    const sorted   = [...c.days].sort((a, b) => a - b);
+    const firstDay = sorted[0];
+    const lastDay  = sorted[sorted.length - 1];
+    getSegs(c.days, startWday).forEach(sg => {
+      rowBars[sg.row].push({
+        ...sg, c, ci,
+        isOpen:  sg.sd === firstDay,
+        isClose: sg.ed === lastDay
+      });
+    });
+  });
+
+  /* ── 슬롯 배정 ──────────────────────────────────
+     같은 row 안에서 칼럼 범위가 겹치거나 바로 인접한
+     과정은 다른 슬롯에 배치.
+     핵심 수정: claimed[sl] >= b.sc  (>= 로 바꿈)
+              → 끝 칼럼과 시작 칼럼이 같은 경우도 분리
+  ─────────────────────────────────────────────── */
+  const rowMaxSlot = rowBars.map(bars => {
+    const sorted = [...bars].sort((a, b) => a.sc - b.sc || a.ci - b.ci);
+    const claimed = []; // claimed[slot] = 해당 슬롯의 마지막 점유 칼럼
+    sorted.forEach(b => {
+      let sl = 0;
+      while (claimed[sl] !== undefined && claimed[sl] >= b.sc) sl++;
+      b.slot = sl;
+      claimed[sl] = b.ec;
+    });
+    return bars.length ? Math.max(...bars.map(b => b.slot + 1)) : 0;
+  });
+
+  const wc = document.getElementById('weeks');
+  wc.innerHTML = '';
+
+  for (let r = 0; r < numRows; r++) {
+    const row = document.createElement('div');
+    row.className = 'wrow';
+
+    /* 날짜 숫자 행 */
+    const dn = document.createElement('div');
+    dn.className = 'dnums';
+    for (let c = 0; c < 7; c++) {
+      const day = r * 7 + c - startWday + 1;
+      const cell = document.createElement('div');
+      const holKey = `${year}-${month}-${day}`;
+      let cls = 'dn' + (c === 0 ? ' sun' : c === 6 ? ' sat' : '');
+      if (day >= 1 && day <= daysInMonth) {
+        cell.textContent = day;
+        if (HOL_KR[holKey]) cls += ' hol';
+      } else { cls += ' out'; cell.textContent = '-'; }
+      cell.className = cls;
+      dn.appendChild(cell);
+    }
+    row.appendChild(dn);
+
+    /* 바 영역 */
+    const bars = rowBars[r];
+    if (bars.length) {
+      const ba = document.createElement('div');
+      ba.className = 'barea';
+      ba.style.height = (rowMaxSlot[r] * SLOT_H + 8) + 'px';
+
+      bars.forEach(b => {
+        const top = b.slot * SLOT_H + 6;
+
+        /*
+          GAP 적용:
+          barL = 칼럼 왼쪽 경계 + GAP  (개강이 아니면 경계까지 꽉 채움)
+          barR = 칼럼 오른쪽 경계 - GAP (종강이 아니면 경계까지 꽉 채움)
+          → 인접 과정이 붙어있어도 GAP 덕분에 원이 분리됨
+          → 개강/종강 아닌 쪽 끝은 칸 경계까지 채워 연속감 유지
+        */
+        const barL = b.sc * CW + GAP;
+        const barR = (b.ec + 1) * CW - GAP;
+        const barW = barR - barL;
+        const barMid = top + (SLOT_H - BAR_H) / 2;
+
+        /* 바 트랙 */
+        const tr = document.createElement('div');
+        tr.className = 'bt';
+        tr.style.cssText = [
+          `left:${barL}%`,
+          `width:${barW}%`,
+          `top:${barMid}px`,
+          `height:${BAR_H}px`,
+          `background:${b.c.color}`,
+          `opacity:0.82`
+        ].join(';');
+        ba.appendChild(tr);
+
+        /* 라벨: 바 위에 */
+        const lb = document.createElement('div');
+        lb.className = 'bl';
+        lb.style.cssText = [
+          `left:${barL}%`,
+          `width:${barW}%`,
+          `top:${barMid + BAR_H + 2}px`,
+          `color:${b.c.color}`
+        ].join(';');
+        lb.textContent = b.c.name;
+        ba.appendChild(lb);
+
+        const epTop = barMid - (EP - BAR_H) / 2;
+
+        /* 개강 원: 바의 왼쪽 끝 */
+        if (b.isOpen) {
+          const ds = document.createElement('div');
+          ds.className = 'ep';
+          ds.style.cssText = [
+            `width:${EP}px`,
+            `height:${EP}px`,
+            `left:calc(${barL}% - ${EP_H}px)`,
+            `top:${epTop}px`,
+            `border-color:${b.c.color}`
+          ].join(';');
+          ba.appendChild(ds);
+        }
+
+        /* 종강 원: 바의 오른쪽 끝 */
+        if (b.isClose) {
+          const de = document.createElement('div');
+          de.className = 'ep';
+          de.style.cssText = [
+            `width:${EP}px`,
+            `height:${EP}px`,
+            `left:calc(${barR}% - ${EP_H}px)`,
+            `top:${epTop}px`,
+            `border-color:${b.c.color}`
+          ].join(';');
+          ba.appendChild(de);
+        }
+      });
+      row.appendChild(ba);
+    }
+    wc.appendChild(row);
+  }
+
+  /* 레전드 */
+  const leg = document.getElementById('legend');
+  leg.innerHTML = '';
+  courses.forEach(c => {
+    leg.innerHTML += `<div class="li"><div class="ld" style="background:${c.color}"></div>${c.name}</div>`;
+  });
+
+  document.getElementById('hYear').textContent      = year;
+  document.getElementById('hMonthName').textContent = MONTHS[month];
+  document.getElementById('hMonthNum').textContent  = String(month).padStart(2, '0');
+}
+
+function renderList(courses) {
+  const cards = document.getElementById('cards');
+  cards.innerHTML = '';
+  courses.forEach(c => {
+    const s = [...c.days].sort((a, b) => a - b);
+    const ranges = [];
+    let st = s[0], en = s[0];
+    for (let i = 1; i < s.length; i++) {
+      if (s[i] === en + 1) { en = s[i]; }
+      else { ranges.push(st === en ? `${st}일` : `${st}–${en}일`); st = en = s[i]; }
+    }
+    ranges.push(st === en ? `${st}일` : `${st}–${en}일`);
+    cards.innerHTML += `
+    <div class="card">
+      <div class="cbar" style="background:${c.color}"></div>
+      <div class="cbody">
+        <div class="cname">${c.name}</div>
+        <div class="csub">${c.sub}</div>
+        <div class="chips">
+          ${c.times && c.times.length ? c.times.map(t => `<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join('') : ''}
+          ${c.detail ? `<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>` : ''}
+        </div>
+        <div class="cdates">일정 : ${ranges.join(' · ')}</div>
+      </div>
+    </div>`;
+  });
+}
+
+function sw(v) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
+  document.getElementById(v).classList.add('on');
+  document.querySelectorAll('.tb')[v === 'cal' ? 0 : 1].classList.add('on');
+}
+
+async function init() {
+  let data;
+  try {
+    const res = await fetch(WORKER_URL + '/schedule', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('worker error');
+    data = await res.json();
+  } catch (e) {
+    console.warn('Worker 미연결, Fallback 사용:', e.message);
+    data = FALLBACK;
+  }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display    = 'block';
+  renderCalendar(data.year, data.month, data.courses);
+  renderList(data.courses);
+}
+
+init();
+</script>
+</body>
+</html>
