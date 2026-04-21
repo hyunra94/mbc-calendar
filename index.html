@@ -58,6 +58,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 <div id="loading" class="state">일정을 불러오는 중...</div>
 <div id="main" style="display:none">
 
+  <div id="errMsg" style="display:none;background:#fff3cd;color:#856404;font-size:11px;padding:8px 12px;border-radius:8px;margin-bottom:12px;border:1px solid #ffc107"></div>
   <div class="toggle-bar">
     <button class="tb on" onclick="sw('cal')">📅 캘린더</button>
     <button class="tb" onclick="sw('list')">📋 목록</button>
@@ -325,7 +326,9 @@ function renderList(courses) {
         <div class="cname">${c.name}</div>
         <div class="csub">${c.sub}</div>
         <div class="chips">
+          ${c.round  ? `<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`  : ''}
           ${c.times && c.times.length ? c.times.map(t => `<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join('') : ''}
+          ${c.place  ? `<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`  : ''}
           ${c.detail ? `<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>` : ''}
         </div>
         <div class="cdates">일정 : ${ranges.join(' · ')}</div>
@@ -359,9 +362,18 @@ async function loadMonth(year, month) {
     if (!res.ok) throw new Error('worker error');
     data = await res.json();
   } catch (e) {
-    console.warn('Worker 미연결, Fallback 사용:', e.message);
-    data = { ...FALLBACK, year, month };
+    console.warn('Worker 연결 실패:', e.message);
+    data = emptyMonth(year, month);
+    document.getElementById('errMsg').textContent =
+      WORKER_URL.includes('YOUR_WORKER')
+        ? '⚠️ WORKER_URL을 실제 주소로 변경해주세요.'
+        : '⚠️ Worker 연결에 실패했습니다. 잠시 후 다시 시도해주세요.';
+    document.getElementById('errMsg').style.display = 'block';
   }
+  document.getElementById('errMsg').style.display =
+    (data.courses.length === 0 && !WORKER_URL.includes('YOUR_WORKER'))
+      ? document.getElementById('errMsg').style.display  // 에러 있으면 유지
+      : (WORKER_URL.includes('YOUR_WORKER') ? 'block' : 'none');
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('main').style.display    = 'block';
