@@ -47,6 +47,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .chip{font-size:10px;padding:3px 9px;border-radius:8px;font-weight:500}
 .cdates{margin-top:6px;font-size:10px;color:#ccc;line-height:1.9}
 .state{text-align:center;padding:40px;font-size:13px;color:#bbb}
+.nav-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.nav-btn{background:none;border:1.5px solid #e0d0f0;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;color:#9966cc;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.nav-btn:hover{background:#f0e8ff}
+.nav-label{font-size:12px;color:#bbb;font-family:'Noto Sans KR',sans-serif}
 </style>
 </head>
 <body>
@@ -60,6 +64,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
   </div>
 
   <div id="cal" class="sec on">
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="changeMonth(-1)">&#8249;</button>
+      <span class="nav-label" id="navLabel"></span>
+      <button class="nav-btn" onclick="changeMonth(1)">&#8250;</button>
+    </div>
     <div class="cal-head">
       <span class="yv" id="hYear">2026</span>
       <span class="mn" id="hMonthName">May</span>
@@ -82,7 +91,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 </div>
 
 <script>
-const WORKER_URL = 'https://jmbcedu.abyss9405.workers.dev';
+const WORKER_URL = 'https://YOUR_WORKER.YOUR_SUBDOMAIN.workers.dev';
+const SECRET_KEY = 'hyunra2026';   // Cloudflare SECRET_KEY 환경변수와 동일하게 설정
 
 const FALLBACK = {
   year: 2026, month: 5,
@@ -331,23 +341,43 @@ function sw(v) {
   document.querySelectorAll('.tb')[v === 'cal' ? 0 : 1].classList.add('on');
 }
 
-async function init() {
+// 현재 표시 중인 연·월
+const now = new Date();
+let curYear  = now.getFullYear();
+let curMonth = now.getMonth() + 1;
+
+async function loadMonth(year, month) {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('main').style.display    = 'none';
+
   let data;
   try {
-    const res = await fetch(WORKER_URL + '/schedule', { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${WORKER_URL}/schedule?year=${year}&month=${month}`, {
+      signal: AbortSignal.timeout(5000),
+      headers: { 'X-Secret-Key': SECRET_KEY }
+    });
     if (!res.ok) throw new Error('worker error');
     data = await res.json();
   } catch (e) {
     console.warn('Worker 미연결, Fallback 사용:', e.message);
-    data = FALLBACK;
+    data = { ...FALLBACK, year, month };
   }
+
   document.getElementById('loading').style.display = 'none';
   document.getElementById('main').style.display    = 'block';
+  document.getElementById('navLabel').textContent  = `${year}년 ${month}월`;
   renderCalendar(data.year, data.month, data.courses);
   renderList(data.courses);
 }
 
-init();
+function changeMonth(delta) {
+  curMonth += delta;
+  if (curMonth > 12) { curMonth = 1;  curYear++; }
+  if (curMonth < 1)  { curMonth = 12; curYear--; }
+  loadMonth(curYear, curMonth);
+}
+
+loadMonth(curYear, curMonth);
 </script>
 </body>
 </html>
