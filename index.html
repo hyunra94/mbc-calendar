@@ -41,7 +41,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .barea{position:relative;overflow:visible}
 .bt{position:absolute;border-radius:5px;cursor:pointer}
 /* 라벨 텍스트가 잘리지 않도록 overflow:visible */
-.bl{position:absolute;font-size:8.5px;font-weight:700;white-space:nowrap;pointer-events:none;text-align:center;overflow:visible;cursor:pointer}
+.bl{position:absolute;font-size:8.5px;font-weight:700;white-space:nowrap;pointer-events:none;text-align:center;overflow:hidden;cursor:pointer}
 .ep{position:absolute;border-radius:50%;border-width:2.5px;border-style:solid;background:#fff;z-index:3}
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid #f0f0f0}
 .li{display:flex;align-items:center;gap:6px;font-size:10px;color:#999}
@@ -282,7 +282,7 @@ function renderCalendar(year,month,courses){
   document.getElementById('navLabel').textContent=`${year}년 ${month}월`;
 }
 
-/* ── 목록 렌더링 ── */
+/* ── 목록 렌더링 (과정별 카드 1개) ── */
 function renderList(courses){
   const scroll=document.getElementById('listScroll');
   scroll.innerHTML='';
@@ -293,94 +293,72 @@ function renderList(courses){
     return;
   }
 
-  /* 날짜별 세션 생성 */
-  const sessions=[];
-  courses.forEach(c=>{
+  /* 과정별로 날짜 범위 문자열 생성 + 대표 날짜(첫날) 기준 정렬 */
+  const items=courses.map(c=>{
     const sorted=[...c.days].sort((a,b)=>a-b);
+    const firstDay=sorted[0], lastDay=sorted[sorted.length-1];
+    const firstDate=new Date(curYear,curMonth-1,firstDay);
+    firstDate.setHours(0,0,0,0);
+    const lastDate=new Date(curYear,curMonth-1,lastDay);
+    lastDate.setHours(0,0,0,0);
+
+    /* 연속 구간 → "5월 9일, 16일, 23–24일" 형태 */
     const ranges=[];
     let st=sorted[0],en=sorted[0];
     for(let i=1;i<sorted.length;i++){
       if(sorted[i]===en+1){en=sorted[i];}
-      else{ranges.push([st,en]);st=en=sorted[i];}
+      else{ranges.push(st===en?`${curMonth}월 ${st}일`:`${curMonth}월 ${st}–${en}일`);st=en=sorted[i];}
     }
-    ranges.push([st,en]);
-    ranges.forEach(([start,end])=>{
-      const dateObj=new Date(curYear,curMonth-1,start);
-      dateObj.setHours(0,0,0,0);
-      const isPast=dateObj<today;
-      const isToday=dateObj.getTime()===today.getTime();
-      const wd=['일','월','화','수','목','금','토'][dateObj.getDay()];
-      const dateLabel=end===start
-        ?`${curMonth}월 ${start}일 (${wd})`
-        :`${curMonth}월 ${start}–${end}일`;
-      sessions.push({c,dateObj,dateLabel,isPast,isToday,start,end});
-    });
+    ranges.push(st===en?`${curMonth}월 ${st}일`:`${curMonth}월 ${st}–${en}일`);
+    const dateStr=ranges.join(', ');
+
+    /* 과정 전체가 과거인지 여부 */
+    const isPast=lastDate<today;
+    /* 오늘 포함 여부 */
+    const hasToday=firstDate<=today&&today<=lastDate;
+
+    return{c, firstDate, lastDate, dateStr, isPast, hasToday};
   });
 
-  const future=sessions.filter(s=>!s.isPast).sort((a,b)=>a.dateObj-b.dateObj);
-  const past=sessions.filter(s=>s.isPast).sort((a,b)=>b.dateObj-a.dateObj);
+  const future=items.filter(i=>!i.isPast).sort((a,b)=>a.firstDate-b.firstDate);
+  const past  =items.filter(i=>i.isPast ).sort((a,b)=>b.firstDate-a.firstDate);
 
-  function makeCard(s){
+  function makeCard(item){
+    const {c,dateStr,isPast,hasToday}=item;
     const card=document.createElement('div');
-    card.className='card'+(s.isPast?' past':'');
-    const label=s.c.round?`${s.c.name} ${s.c.round}`:s.c.name;
+    card.className='card'+(isPast?' past':'');
+    const label=c.round?`${c.name} ${c.round}`:c.name;
     const chips=[
-      s.c.round?`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">🔢 ${s.c.round}</span>`:'',
-      (s.c.times&&s.c.times.length)?s.c.times.map(t=>`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">⏰ ${t}</span>`).join(''):'',
-      s.c.place?`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">📍 ${s.c.place}</span>`:'',
-      s.c.detail?`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">📋 ${s.c.detail}</span>`:''
+      c.round ?`<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`:'',
+      (c.times&&c.times.length)?c.times.map(t=>`<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join(''):'',
+      c.place ?`<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`:'',
+      c.detail?`<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>`:''
     ].join('');
     card.innerHTML=`
-      <div class="cbar" style="background:${s.c.color};min-height:60px"></div>
+      <div class="cbar" style="background:${c.color};min-height:60px"></div>
       <div class="cbody">
-        <div class="cname">${label}</div>
-        ${s.c.sub?`<div class="csub">${s.c.sub}</div>`:''}
+        <div class="cname">${label}${hasToday?` <span class="today-badge" style="font-size:9px;background:#7a4db5;color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle">진행중</span>`:''}</div>
+        ${c.sub?`<div class="csub">${c.sub}</div>`:''}
         <div class="chips">${chips}</div>
-        <div class="cdates">📅 ${s.dateLabel}</div>
+        <div class="cdates">📅 ${dateStr}</div>
       </div>`;
     return card;
   }
 
-  function makeGroupHeader(label,isToday){
-    const h=document.createElement('div');
-    h.className='date-group'+(isToday?' today-group':'');
-    h.innerHTML=label+(isToday?` <span class="today-badge">오늘</span>`:'');
-    return h;
-  }
+  /* 미래(진행중 포함) */
+  future.forEach(item=>scroll.appendChild(makeCard(item)));
 
-  /* 미래 일정 */
-  let prevLabel='';
-  future.forEach(s=>{
-    if(s.dateLabel!==prevLabel){scroll.appendChild(makeGroupHeader(s.dateLabel,s.isToday));prevLabel=s.dateLabel;}
-    scroll.appendChild(makeCard(s));
-  });
-
-  /* 과거 일정 */
+  /* 과거 */
   if(past.length){
-    if(hidePast){
-      const div=document.createElement('div');
-      div.className='past-divider';
-      div.textContent=`지난 일정 ${past.length}건 보기`;
-      div.onclick=toggleFilter;
-      scroll.appendChild(div);
-    } else {
-      const div=document.createElement('div');
-      div.className='past-divider';
-      div.textContent='이전 일정';
-      scroll.appendChild(div);
-      prevLabel='';
-      past.forEach(s=>{
-        if(s.dateLabel!==prevLabel){scroll.appendChild(makeGroupHeader(s.dateLabel,false));prevLabel=s.dateLabel;}
-        scroll.appendChild(makeCard(s));
-      });
-    }
+    const div=document.createElement('div');
+    div.className='past-divider';
+    div.textContent=hidePast?`지난 일정 ${past.length}건 보기`:'이전 일정';
+    if(hidePast)div.onclick=toggleFilter;
+    scroll.appendChild(div);
+    if(!hidePast) past.forEach(item=>scroll.appendChild(makeCard(item)));
   }
 
-  document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월 · 총 ${sessions.length}건`;
-
-  /* 오늘 위치로 스크롤 */
-  const todayEl=scroll.querySelector('.today-group');
-  if(todayEl)setTimeout(()=>todayEl.scrollIntoView({block:'start',behavior:'smooth'}),100);
+  document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월 · 총 ${items.length}건`;
 }
 
 /* ── 필터 ── */
