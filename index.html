@@ -14,10 +14,15 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .page{max-width:700px;margin:0 auto;padding:24px 20px 40px}
+.err{display:none;background:#fff3cd;color:#856404;font-size:11px;padding:8px 12px;border-radius:8px;margin-bottom:12px;border:1px solid #ffc107}
 .toggle-bar{display:flex;border:1.5px solid #e0d0f0;border-radius:24px;overflow:hidden;width:fit-content;margin-bottom:22px}
 .tb{padding:8px 24px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:500;cursor:pointer;background:transparent;border:none;color:#aaa;transition:all .2s}
 .tb.on{background:#f0e8ff;color:#7a4db5;font-weight:700}
 .sec{display:none}.sec.on{display:block}
+.nav-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.nav-btn{background:none;border:1.5px solid #e0d0f0;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;color:#9966cc;display:flex;align-items:center;justify-content:center;transition:all .2s;line-height:1}
+.nav-btn:hover{background:#f0e8ff}
+.nav-label{font-size:12px;color:#bbb;font-family:'Noto Sans KR',sans-serif}
 .cal-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
 .yv{font-size:12px;font-weight:700;color:#ccc;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:3px}
 .mn{font-size:44px;font-weight:700;color:#1a1a1a;letter-spacing:-2px}
@@ -46,19 +51,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font-size:10px;padding:3px 9px;border-radius:8px;font-weight:500}
 .cdates{margin-top:6px;font-size:10px;color:#ccc;line-height:1.9}
-.state{text-align:center;padding:40px;font-size:13px;color:#bbb}
-.nav-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.nav-btn{background:none;border:1.5px solid #e0d0f0;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;color:#9966cc;display:flex;align-items:center;justify-content:center;transition:all .2s}
-.nav-btn:hover{background:#f0e8ff}
-.nav-label{font-size:12px;color:#bbb;font-family:'Noto Sans KR',sans-serif}
+.empty-msg{text-align:center;padding:40px 0;font-size:13px;color:#ccc}
 </style>
 </head>
 <body>
 <div class="page">
-<div id="loading" class="state">일정을 불러오는 중...</div>
-<div id="main" style="display:none">
 
-  <div id="errMsg" style="display:none;background:#fff3cd;color:#856404;font-size:11px;padding:8px 12px;border-radius:8px;margin-bottom:12px;border:1px solid #ffc107"></div>
+  <div id="errMsg" class="err"></div>
+
   <div class="toggle-bar">
     <button class="tb on" onclick="sw('cal')">📅 캘린더</button>
     <button class="tb" onclick="sw('list')">📋 목록</button>
@@ -71,9 +71,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
       <button class="nav-btn" onclick="changeMonth(1)">&#8250;</button>
     </div>
     <div class="cal-head">
-      <span class="yv" id="hYear">2026</span>
-      <span class="mn" id="hMonthName">May</span>
-      <span class="m2" id="hMonthNum">05</span>
+      <span class="yv" id="hYear"></span>
+      <span class="mn" id="hMonthName"></span>
+      <span class="m2" id="hMonthNum"></span>
     </div>
     <div class="dlabels">
       <div class="dl sun">일</div><div class="dl">월</div><div class="dl">화</div>
@@ -89,204 +89,149 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
   </div>
 
 </div>
-</div>
 
 <script>
+/* ★ 여기만 수정하세요 ★ */
 const WORKER_URL = 'https://jmbcedu.abyss9405.workers.dev/';
-const SECRET_KEY = 'hyunra2026';   // Cloudflare SECRET_KEY 환경변수와 동일하게 설정
+const SECRET_KEY = 'hyunra2026';
 
-const FALLBACK = {
-  year: 2026, month: 5,
-  courses: [
-    { name:'드론 2기',             sub:'드론 조종 실기 교육',           color:'#9966cc', days:[9,10,16,17], times:["별도 안내"], detail:"주말 과정" },
-    { name:'생성형AI 기본 4회차',   sub:'AI프롬프트 & 비즈니스 융합 전략', color:'#2eaa82', days:[13],            times:['14:00–18:00'],  detail:'평일 4시간' },
-    { name:'실감콘텐츠 촬영 6회차', sub:'실감형 영상 촬영 실습',          color:'#4488cc', days:[12,13],          times:['09:00–18:00'],  detail:'화·수' },
-    { name:'프리미어 편집 4회차',   sub:'영상 편집 실무 과정',           color:'#d96b36', days:[18,19,20,21,22],  times:['14:00–18:00'],  detail:'평일 연속 5일' },
-  ]
+/* ── 공휴일 ── */
+const HOL = {
+  '2026-1-1':'신정','2026-3-1':'삼일절','2026-5-1':'근로자의날',
+  '2026-5-5':'어린이날','2026-5-24':'부처님오신날','2026-5-25':'대체휴일',
+  '2026-6-6':'현충일','2026-8-15':'광복절','2026-9-24':'추석연휴',
+  '2026-9-25':'추석','2026-9-26':'추석연휴','2026-10-3':'개천절',
+  '2026-10-9':'한글날','2026-12-25':'크리스마스'
 };
-
-const HOL_KR = {
-  '2026-5-1':'근로자의날','2026-5-5':'어린이날',
-  '2026-5-24':'부처님오신날','2026-5-25':'대체휴일'
-};
-const MONTHS=['','January','February','March','April','May','June',
+const MONTHS = ['','January','February','March','April','May','June',
   'July','August','September','October','November','December'];
 
-/* ─────────────────────────────────────
-   레이아웃 상수
-   BAR_H    : 바 두께 (px)
-   GAP      : 칼럼 경계에서 바 안쪽으로 당기는 여백 (%)
-              → 인접 과정 원이 같은 X에 겹치지 않도록 분리
-   EP       : 원 지름 (px)
-   SLOT_H   : 슬롯 한 칸 높이 (px)
-───────────────────────────────────── */
+/* ── 상태 ── */
+const now = new Date();
+let curYear  = now.getFullYear();
+let curMonth = now.getMonth() + 1;
+
+/* ── 레이아웃 상수 ── */
 const BAR_H  = 10;
-const GAP    = 1.2;   // %
+const GAP    = 1.2;
 const EP     = 13;
 const EP_H   = EP / 2;
 const SLOT_H = 36;
 const CW     = 100 / 7;
 
-function getPos(day, sw) {
-  const o = sw + day - 1;
-  return { row: Math.floor(o / 7), col: o % 7 };
+/* ── 유틸 ── */
+function getPos(day, startWday) {
+  const o = startWday + day - 1;
+  return { row: Math.floor(o/7), col: o%7 };
 }
 
-function getSegs(days, sw) {
+function getSegs(days, startWday) {
   const byRow = {};
   days.forEach(d => {
-    const p = getPos(d, sw);
-    (byRow[p.row] = byRow[p.row] || []).push({ col: p.col, day: d });
+    const p = getPos(d, startWday);
+    (byRow[p.row] = byRow[p.row]||[]).push({ col:p.col, day:d });
   });
   const out = [];
   Object.entries(byRow).forEach(([r, arr]) => {
-    arr.sort((a, b) => a.col - b.col);
-    let s = arr[0], e = arr[0];
-    for (let i = 1; i < arr.length; i++) {
-      if (arr[i].col === e.col + 1) { e = arr[i]; }
-      else { out.push({ row: +r, sc: s.col, ec: e.col, sd: s.day, ed: e.day }); s = e = arr[i]; }
+    arr.sort((a,b) => a.col-b.col);
+    let s=arr[0], e=arr[0];
+    for(let i=1; i<arr.length; i++){
+      if(arr[i].col === e.col+1){ e=arr[i]; }
+      else { out.push({row:+r,sc:s.col,ec:e.col,sd:s.day,ed:e.day}); s=e=arr[i]; }
     }
-    out.push({ row: +r, sc: s.col, ec: e.col, sd: s.day, ed: e.day });
+    out.push({row:+r,sc:s.col,ec:e.col,sd:s.day,ed:e.day});
   });
   return out;
 }
 
+/* ── 캘린더 렌더링 ── */
 function renderCalendar(year, month, courses) {
-  const startWday   = new Date(year, month - 1, 1).getDay();
+  const startWday   = new Date(year, month-1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
-  const numRows     = Math.ceil((startWday + daysInMonth) / 7);
+  const numRows     = Math.ceil((startWday + daysInMonth)/7);
 
-  /* ── row별 bar 목록 ── */
-  const rowBars = Array.from({ length: numRows }, () => []);
+  const rowBars = Array.from({length:numRows}, ()=>[]);
   courses.forEach((c, ci) => {
-    const sorted   = [...c.days].sort((a, b) => a - b);
+    const sorted   = [...c.days].sort((a,b)=>a-b);
     const firstDay = sorted[0];
-    const lastDay  = sorted[sorted.length - 1];
+    const lastDay  = sorted[sorted.length-1];
     getSegs(c.days, startWday).forEach(sg => {
-      rowBars[sg.row].push({
-        ...sg, c, ci,
+      rowBars[sg.row].push({...sg, c, ci,
         isOpen:  sg.sd === firstDay,
         isClose: sg.ed === lastDay
       });
     });
   });
 
-  /* ── 슬롯 배정 ──────────────────────────────────
-     같은 row 안에서 칼럼 범위가 겹치거나 바로 인접한
-     과정은 다른 슬롯에 배치.
-     핵심 수정: claimed[sl] >= b.sc  (>= 로 바꿈)
-              → 끝 칼럼과 시작 칼럼이 같은 경우도 분리
-  ─────────────────────────────────────────────── */
   const rowMaxSlot = rowBars.map(bars => {
-    const sorted = [...bars].sort((a, b) => a.sc - b.sc || a.ci - b.ci);
-    const claimed = []; // claimed[slot] = 해당 슬롯의 마지막 점유 칼럼
+    const sorted = [...bars].sort((a,b) => a.sc-b.sc || a.ci-b.ci);
+    const claimed = [];
     sorted.forEach(b => {
-      let sl = 0;
-      while (claimed[sl] !== undefined && claimed[sl] >= b.sc) sl++;
-      b.slot = sl;
-      claimed[sl] = b.ec;
+      let sl=0;
+      while(claimed[sl] !== undefined && claimed[sl] >= b.sc) sl++;
+      b.slot = sl; claimed[sl] = b.ec;
     });
-    return bars.length ? Math.max(...bars.map(b => b.slot + 1)) : 0;
+    return bars.length ? Math.max(...bars.map(b=>b.slot+1)) : 0;
   });
 
   const wc = document.getElementById('weeks');
   wc.innerHTML = '';
 
-  for (let r = 0; r < numRows; r++) {
+  for(let r=0; r<numRows; r++){
     const row = document.createElement('div');
     row.className = 'wrow';
 
-    /* 날짜 숫자 행 */
     const dn = document.createElement('div');
     dn.className = 'dnums';
-    for (let c = 0; c < 7; c++) {
-      const day = r * 7 + c - startWday + 1;
+    for(let c=0; c<7; c++){
+      const day = r*7+c-startWday+1;
       const cell = document.createElement('div');
       const holKey = `${year}-${month}-${day}`;
-      let cls = 'dn' + (c === 0 ? ' sun' : c === 6 ? ' sat' : '');
-      if (day >= 1 && day <= daysInMonth) {
+      let cls = 'dn'+(c===0?' sun':c===6?' sat':'');
+      if(day>=1 && day<=daysInMonth){
         cell.textContent = day;
-        if (HOL_KR[holKey]) cls += ' hol';
-      } else { cls += ' out'; cell.textContent = '-'; }
+        if(HOL[holKey]) cls += ' hol';
+      } else { cls += ' out'; cell.textContent='-'; }
       cell.className = cls;
       dn.appendChild(cell);
     }
     row.appendChild(dn);
 
-    /* 바 영역 */
     const bars = rowBars[r];
-    if (bars.length) {
+    if(bars.length){
       const ba = document.createElement('div');
       ba.className = 'barea';
-      ba.style.height = (rowMaxSlot[r] * SLOT_H + 8) + 'px';
+      ba.style.height = (rowMaxSlot[r]*SLOT_H+8)+'px';
 
       bars.forEach(b => {
-        const top = b.slot * SLOT_H + 6;
-
-        /*
-          GAP 적용:
-          barL = 칼럼 왼쪽 경계 + GAP  (개강이 아니면 경계까지 꽉 채움)
-          barR = 칼럼 오른쪽 경계 - GAP (종강이 아니면 경계까지 꽉 채움)
-          → 인접 과정이 붙어있어도 GAP 덕분에 원이 분리됨
-          → 개강/종강 아닌 쪽 끝은 칸 경계까지 채워 연속감 유지
-        */
-        const barL = b.sc * CW + GAP;
-        const barR = (b.ec + 1) * CW - GAP;
+        const top  = b.slot*SLOT_H+6;
+        const barL = b.sc*CW + GAP;
+        const barR = (b.ec+1)*CW - GAP;
         const barW = barR - barL;
-        const barMid = top + (SLOT_H - BAR_H) / 2;
+        const barMid = top+(SLOT_H-BAR_H)/2;
+        const epTop  = barMid-(EP-BAR_H)/2;
 
-        /* 바 트랙 */
         const tr = document.createElement('div');
-        tr.className = 'bt';
-        tr.style.cssText = [
-          `left:${barL}%`,
-          `width:${barW}%`,
-          `top:${barMid}px`,
-          `height:${BAR_H}px`,
-          `background:${b.c.color}`,
-          `opacity:0.82`
-        ].join(';');
+        tr.className='bt';
+        tr.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid}px;height:${BAR_H}px;background:${b.c.color};opacity:0.82`;
         ba.appendChild(tr);
 
-        /* 라벨: 바 위에 */
         const lb = document.createElement('div');
-        lb.className = 'bl';
-        lb.style.cssText = [
-          `left:${barL}%`,
-          `width:${barW}%`,
-          `top:${barMid + BAR_H + 2}px`,
-          `color:${b.c.color}`
-        ].join(';');
+        lb.className='bl';
+        lb.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid+BAR_H+2}px;color:${b.c.color}`;
         lb.textContent = b.c.name;
         ba.appendChild(lb);
 
-        const epTop = barMid - (EP - BAR_H) / 2;
-
-        /* 개강 원: 바의 왼쪽 끝 */
-        if (b.isOpen) {
+        if(b.isOpen){
           const ds = document.createElement('div');
-          ds.className = 'ep';
-          ds.style.cssText = [
-            `width:${EP}px`,
-            `height:${EP}px`,
-            `left:calc(${barL}% - ${EP_H}px)`,
-            `top:${epTop}px`,
-            `border-color:${b.c.color}`
-          ].join(';');
+          ds.className='ep';
+          ds.style.cssText=`width:${EP}px;height:${EP}px;left:calc(${barL}% - ${EP_H}px);top:${epTop}px;border-color:${b.c.color}`;
           ba.appendChild(ds);
         }
-
-        /* 종강 원: 바의 오른쪽 끝 */
-        if (b.isClose) {
+        if(b.isClose){
           const de = document.createElement('div');
-          de.className = 'ep';
-          de.style.cssText = [
-            `width:${EP}px`,
-            `height:${EP}px`,
-            `left:calc(${barR}% - ${EP_H}px)`,
-            `top:${epTop}px`,
-            `border-color:${b.c.color}`
-          ].join(';');
+          de.className='ep';
+          de.style.cssText=`width:${EP}px;height:${EP}px;left:calc(${barR}% - ${EP_H}px);top:${epTop}px;border-color:${b.c.color}`;
           ba.appendChild(de);
         }
       });
@@ -295,41 +240,46 @@ function renderCalendar(year, month, courses) {
     wc.appendChild(row);
   }
 
-  /* 레전드 */
   const leg = document.getElementById('legend');
-  leg.innerHTML = '';
+  leg.innerHTML='';
   courses.forEach(c => {
-    leg.innerHTML += `<div class="li"><div class="ld" style="background:${c.color}"></div>${c.name}</div>`;
+    leg.innerHTML+=`<div class="li"><div class="ld" style="background:${c.color}"></div>${c.name}</div>`;
   });
 
   document.getElementById('hYear').textContent      = year;
   document.getElementById('hMonthName').textContent = MONTHS[month];
-  document.getElementById('hMonthNum').textContent  = String(month).padStart(2, '0');
+  document.getElementById('hMonthNum').textContent  = String(month).padStart(2,'0');
+  document.getElementById('navLabel').textContent   = `${year}년 ${month}월`;
 }
 
+/* ── 목록 렌더링 ── */
 function renderList(courses) {
   const cards = document.getElementById('cards');
-  cards.innerHTML = '';
+  cards.innerHTML='';
+  if(!courses.length){
+    cards.innerHTML='<div class="empty-msg">이번 달 등록된 일정이 없습니다.</div>';
+    return;
+  }
   courses.forEach(c => {
-    const s = [...c.days].sort((a, b) => a - b);
-    const ranges = [];
-    let st = s[0], en = s[0];
-    for (let i = 1; i < s.length; i++) {
-      if (s[i] === en + 1) { en = s[i]; }
-      else { ranges.push(st === en ? `${st}일` : `${st}–${en}일`); st = en = s[i]; }
+    const s=[...c.days].sort((a,b)=>a-b);
+    const ranges=[];
+    let st=s[0],en=s[0];
+    for(let i=1;i<s.length;i++){
+      if(s[i]===en+1){en=s[i];}
+      else{ranges.push(st===en?`${st}일`:`${st}–${en}일`);st=en=s[i];}
     }
-    ranges.push(st === en ? `${st}일` : `${st}–${en}일`);
-    cards.innerHTML += `
+    ranges.push(st===en?`${st}일`:`${st}–${en}일`);
+    cards.innerHTML+=`
     <div class="card">
       <div class="cbar" style="background:${c.color}"></div>
       <div class="cbody">
         <div class="cname">${c.name}</div>
-        <div class="csub">${c.sub}</div>
+        ${c.sub?`<div class="csub">${c.sub}</div>`:''}
         <div class="chips">
-          ${c.round  ? `<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`  : ''}
-          ${c.times && c.times.length ? c.times.map(t => `<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join('') : ''}
-          ${c.place  ? `<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`  : ''}
-          ${c.detail ? `<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>` : ''}
+          ${(c.round )?`<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`:''}
+          ${(c.times&&c.times.length)?c.times.map(t=>`<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join(''):''}
+          ${(c.place )?`<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`:''}
+          ${(c.detail)?`<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>`:''}
         </div>
         <div class="cdates">일정 : ${ranges.join(' · ')}</div>
       </div>
@@ -337,58 +287,59 @@ function renderList(courses) {
   });
 }
 
-function sw(v) {
-  document.querySelectorAll('.sec').forEach(s => s.classList.remove('on'));
-  document.querySelectorAll('.tb').forEach(b => b.classList.remove('on'));
+/* ── 뷰 전환 ── */
+function sw(v){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
   document.getElementById(v).classList.add('on');
-  document.querySelectorAll('.tb')[v === 'cal' ? 0 : 1].classList.add('on');
+  document.querySelectorAll('.tb')[v==='cal'?0:1].classList.add('on');
 }
 
-// 현재 표시 중인 연·월
-const now = new Date();
-let curYear  = now.getFullYear();
-let curMonth = now.getMonth() + 1;
-
+/* ── 데이터 로드 ── */
 async function loadMonth(year, month) {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('main').style.display    = 'none';
+  const elErr = document.getElementById('errMsg');
+  elErr.style.display='none';
+  elErr.textContent='';
 
-  let data;
-  try {
-    const res = await fetch(`${WORKER_URL}/schedule?year=${year}&month=${month}`, {
-      signal: AbortSignal.timeout(5000),
-      headers: { 'X-Secret-Key': SECRET_KEY }
-    });
-    if (!res.ok) throw new Error('worker error');
-    data = await res.json();
-  } catch (e) {
-    console.warn('Worker 연결 실패:', e.message);
-    data = emptyMonth(year, month);
-    document.getElementById('errMsg').textContent =
-      WORKER_URL.includes('YOUR_WORKER')
-        ? '⚠️ WORKER_URL을 실제 주소로 변경해주세요.'
-        : '⚠️ Worker 연결에 실패했습니다. 잠시 후 다시 시도해주세요.';
-    document.getElementById('errMsg').style.display = 'block';
+  // 빈 캘린더 먼저 그리기 (로딩 중 UI 유지)
+  renderCalendar(year, month, []);
+  renderList([]);
+
+  // Worker URL 미설정 체크
+  if(WORKER_URL.includes('YOUR_WORKER')){
+    elErr.textContent='⚠️ WORKER_URL을 실제 Cloudflare Worker 주소로 변경해주세요.';
+    elErr.style.display='block';
+    return;
   }
-  document.getElementById('errMsg').style.display =
-    (data.courses.length === 0 && !WORKER_URL.includes('YOUR_WORKER'))
-      ? document.getElementById('errMsg').style.display  // 에러 있으면 유지
-      : (WORKER_URL.includes('YOUR_WORKER') ? 'block' : 'none');
 
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('main').style.display    = 'block';
-  document.getElementById('navLabel').textContent  = `${year}년 ${month}월`;
-  renderCalendar(data.year, data.month, data.courses);
-  renderList(data.courses);
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), 8000);
+    const res = await fetch(
+      `${WORKER_URL}/schedule?year=${year}&month=${month}`,
+      { signal:controller.signal, headers:{'X-Secret-Key':SECRET_KEY} }
+    );
+    clearTimeout(timer);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderCalendar(data.year, data.month, data.courses);
+    renderList(data.courses);
+  } catch(e){
+    console.error('Worker 오류:', e);
+    elErr.textContent=`⚠️ 데이터를 불러오지 못했습니다. (${e.message})`;
+    elErr.style.display='block';
+  }
 }
 
-function changeMonth(delta) {
+/* ── 월 이동 ── */
+function changeMonth(delta){
   curMonth += delta;
-  if (curMonth > 12) { curMonth = 1;  curYear++; }
-  if (curMonth < 1)  { curMonth = 12; curYear--; }
+  if(curMonth>12){curMonth=1; curYear++;}
+  if(curMonth<1) {curMonth=12;curYear--;}
   loadMonth(curYear, curMonth);
 }
 
+/* ── 시작 ── */
 loadMonth(curYear, curMonth);
 </script>
 </body>
