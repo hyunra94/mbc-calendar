@@ -509,6 +509,10 @@ function renderListGroups(future, past, scroll){
       c.place ?`<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`:'',
       c.detail?`<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>`:''
     ].join('');
+    // 대표 월: 첫 날짜 기준
+    const repYear=g.days[0].year, repMonth=g.days[0].month;
+    card.dataset.year=repYear;
+    card.dataset.month=repMonth;
     card.innerHTML=`
       <div class="cbar" style="background:${c.color};min-height:60px"></div>
       <div class="cbody">
@@ -552,6 +556,24 @@ function renderListGroups(future, past, scroll){
   setTimeout(()=>{
     if(todayMarker) todayMarker.scrollIntoView({block:'center',behavior:'smooth'});
   },150);
+
+  // IntersectionObserver: 뷰포트에 보이는 카드의 월을 타이틀에 반영
+  if(window._listObserver) window._listObserver.disconnect();
+  const titleEl=document.getElementById('listTitle');
+  window._listObserver=new IntersectionObserver(entries=>{
+    // 가장 위에 보이는 카드 찾기
+    const visible=entries
+      .filter(e=>e.isIntersecting)
+      .sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top);
+    if(visible.length){
+      const el=visible[0].target;
+      const y=el.dataset.year, m=el.dataset.month;
+      if(y&&m) titleEl.textContent=`${y}년 ${m}월`;
+    }
+  },{root:scroll,threshold:0.1});
+  scroll.querySelectorAll('.card[data-month]').forEach(card=>{
+    window._listObserver.observe(card);
+  });
 }
 
 /* ── 데이터 로드 ── */
@@ -601,9 +623,17 @@ function changeMonth(delta){
   curMonth+=delta;
   if(curMonth>12){curMonth=1;curYear++;}
   if(curMonth<1){curMonth=12;curYear--;}
-  loadMonth(curYear,curMonth);
+  // Ctrl+F5 (type=1) 또는 강제새로고침 시 캐시 제거
+if(performance.navigation.type===1){
+  sessionStorage.clear();
+}
+loadMonth(curYear,curMonth);
 }
 
+// Ctrl+F5 (type=1) 또는 강제새로고침 시 캐시 제거
+if(performance.navigation.type===1){
+  sessionStorage.clear();
+}
 loadMonth(curYear,curMonth);
 </script>
 </body>
