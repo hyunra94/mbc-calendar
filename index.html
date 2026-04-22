@@ -34,7 +34,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .dl.sun{color:#e06060}.dl.sat{color:#6688cc}
 .wrow{border-top:1px solid #f0f0f0;position:relative}
 .dnums{display:grid;grid-template-columns:repeat(7,1fr)}
-.dn{text-align:center;padding:7px 2px 3px;font-size:12px;font-weight:500;color:#333}
+.dn{text-align:center;padding:6px 2px 0;font-size:12px;font-weight:500;color:#333}
 .dn.sun{color:#e06060}.dn.sat{color:#6688cc}.dn.hol{color:#e06060}.dn.out{color:transparent}
 .dn.today-cell{position:relative}
 .today-circle{width:24px;height:24px;border-radius:50%;background:#7a4db5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin:0 auto}
@@ -238,23 +238,26 @@ function renderCalendar(year, month, courses){
     if(bars.length){
       const ba=document.createElement('div');
       ba.className='barea';
-      ba.style.height=(rowMaxSlot[r]*SLOT_H+4)+'px';
+      ba.style.height=(rowMaxSlot[r]*SLOT_H+2)+'px';
 
       bars.forEach(b=>{
-        const top=b.slot*SLOT_H+2;
+        const top=b.slot*SLOT_H;
         const barL=b.sc*CW+GAP, barR=(b.ec+1)*CW-GAP, barW=barR-barL;
         const barMid=top+(SLOT_H-BAR_H)/2, epTop=barMid-(EP-BAR_H)/2;
 
         const tr=document.createElement('div');
         tr.className='bt';
-        tr.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid}px;height:${BAR_H}px;background:${b.c.color};opacity:0.82`;
+        tr.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid}px;height:${BAR_H}px;background:${b.c.color};opacity:0.82;cursor:pointer`;
+        tr.title=b.c.round?`${b.c.name} ${b.c.round}`:b.c.name;
+        tr.onclick=()=>sw('list');
         ba.appendChild(tr);
 
         /* 바 라벨: 과정명 + 회차 */
         const lb=document.createElement('div');
         lb.className='bl';
-        lb.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid+BAR_H+2}px;color:${b.c.color}`;
+        lb.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid+BAR_H+2}px;color:${b.c.color};cursor:pointer`;
         lb.textContent=b.c.round ? `${b.c.name} ${b.c.round}` : b.c.name;
+        lb.onclick=()=>sw('list');
         ba.appendChild(lb);
 
         if(b.isOpen){
