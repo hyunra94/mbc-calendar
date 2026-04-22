@@ -19,10 +19,12 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .tb{padding:8px 24px;font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:500;cursor:pointer;background:transparent;border:none;color:#aaa;transition:all .2s}
 .tb.on{background:#f0e8ff;color:#7a4db5;font-weight:700}
 .sec{display:none}.sec.on{display:block}
+
+/* ── 캘린더 ── */
 .nav-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .nav-btn{background:none;border:1.5px solid #e0d0f0;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;color:#9966cc;display:flex;align-items:center;justify-content:center;transition:all .2s;line-height:1}
 .nav-btn:hover{background:#f0e8ff}
-.nav-label{font-size:12px;color:#bbb;font-family:'Noto Sans KR',sans-serif}
+.nav-label{font-size:12px;color:#bbb}
 .cal-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
 .yv{font-size:12px;font-weight:700;color:#ccc;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:3px}
 .mn{font-size:44px;font-weight:700;color:#1a1a1a;letter-spacing:-2px}
@@ -34,6 +36,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .dnums{display:grid;grid-template-columns:repeat(7,1fr)}
 .dn{text-align:center;padding:9px 2px 7px;font-size:12px;font-weight:500;color:#333}
 .dn.sun{color:#e06060}.dn.sat{color:#6688cc}.dn.hol{color:#e06060}.dn.out{color:transparent}
+.dn.today-cell{position:relative}
+.today-circle{width:24px;height:24px;border-radius:50%;background:#7a4db5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin:0 auto}
 .barea{position:relative;overflow:visible}
 .bt{position:absolute;border-radius:5px}
 .bl{position:absolute;font-size:8.5px;font-weight:700;white-space:nowrap;pointer-events:none;text-align:center;overflow:hidden}
@@ -42,15 +46,34 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .li{display:flex;align-items:center;gap:6px;font-size:10px;color:#999}
 .ld{width:22px;height:6px;border-radius:3px}
 .brand{text-align:right;font-size:10px;color:#ccc;margin-top:10px;font-style:italic}
-.cards{display:flex;flex-direction:column;gap:10px}
-.card{border-radius:12px;border:1px solid #f0ecf8;background:#fff;padding:14px 16px;display:flex;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+
+/* ── 목록 ── */
+.list-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.list-title{font-size:12px;color:#bbb}
+.filter-btn{font-family:'Noto Sans KR',sans-serif;font-size:11px;padding:5px 12px;border-radius:20px;border:1.5px solid #e0d0f0;background:transparent;color:#aaa;cursor:pointer;transition:all .2s}
+.filter-btn.on{background:#f0e8ff;border-color:#c9a7e8;color:#7a4db5;font-weight:700}
+
+.list-scroll{max-height:600px;overflow-y:auto;display:flex;flex-direction:column;gap:0;padding-right:2px}
+.list-scroll::-webkit-scrollbar{width:3px}
+.list-scroll::-webkit-scrollbar-thumb{background:#e0d0f0;border-radius:2px}
+
+/* 날짜 그룹 헤더 */
+.date-group{padding:10px 0 6px;font-size:11px;font-weight:700;color:#bbb;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.date-group.today-group{color:#7a4db5}
+.date-group::after{content:'';flex:1;height:1px;background:#f0f0f0}
+.today-badge{font-size:9px;background:#7a4db5;color:#fff;padding:1px 6px;border-radius:8px;font-weight:700}
+.past-divider{padding:8px 0 6px;font-size:10px;color:#ddd;display:flex;align-items:center;gap:8px;cursor:pointer}
+.past-divider::before,.past-divider::after{content:'';flex:1;height:1px;background:#f0f0f0}
+
+.card{border-radius:12px;border:1px solid #f0ecf8;background:#fff;padding:12px 14px;display:flex;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:8px;transition:opacity .2s}
+.card.past{opacity:.55}
 .cbar{width:4px;border-radius:4px;flex-shrink:0}
 .cbody{flex:1;min-width:0}
-.cname{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:2px}
-.csub{font-size:11px;color:#bbb;margin-bottom:8px}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{font-size:10px;padding:3px 9px;border-radius:8px;font-weight:500}
-.cdates{margin-top:6px;font-size:10px;color:#ccc;line-height:1.9}
+.cname{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:3px}
+.csub{font-size:11px;color:#bbb;margin-bottom:7px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:500}
+.cdates{margin-top:5px;font-size:10px;color:#ccc;line-height:1.9}
 .empty-msg{text-align:center;padding:40px 0;font-size:13px;color:#ccc}
 </style>
 </head>
@@ -64,6 +87,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
     <button class="tb" onclick="sw('list')">📋 목록</button>
   </div>
 
+  <!-- 캘린더 -->
   <div id="cal" class="sec on">
     <div class="nav-bar">
       <button class="nav-btn" onclick="changeMonth(-1)">&#8249;</button>
@@ -84,8 +108,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
     <div class="brand">@Jeonju MBC K-HighTech Platform</div>
   </div>
 
+  <!-- 목록 -->
   <div id="list" class="sec">
-    <div class="cards" id="cards"></div>
+    <div class="list-toolbar">
+      <span class="list-title" id="listTitle"></span>
+      <button class="filter-btn" id="filterBtn" onclick="toggleFilter()">지난 일정 숨기기</button>
+    </div>
+    <div class="list-scroll" id="listScroll"></div>
   </div>
 
 </div>
@@ -105,39 +134,36 @@ const HOL = {
 };
 const MONTHS = ['','January','February','March','April','May','June',
   'July','August','September','October','November','December'];
+const MONTHS_KO = ['','1월','2월','3월','4월','5월','6월',
+  '7월','8월','9월','10월','11월','12월'];
 
 /* ── 상태 ── */
+const today = new Date();
+today.setHours(0,0,0,0);
 const now = new Date();
 let curYear  = now.getFullYear();
-let curMonth = now.getMonth() + 1;
+let curMonth = now.getMonth()+1;
+let hidePast = false;
+
+/* 전체 로드된 과정 (목록 뷰에서 월 무관 표시용) */
+let allCourses = [];
 
 /* ── 레이아웃 상수 ── */
-const BAR_H  = 10;
-const GAP    = 1.2;
-const EP     = 13;
-const EP_H   = EP / 2;
-const SLOT_H = 36;
-const CW     = 100 / 7;
+const BAR_H=10, GAP=1.2, EP=13, EP_H=EP/2, SLOT_H=36, CW=100/7;
 
 /* ── 유틸 ── */
-function getPos(day, startWday) {
-  const o = startWday + day - 1;
-  return { row: Math.floor(o/7), col: o%7 };
-}
+function getPos(day, sw){ const o=sw+day-1; return{row:Math.floor(o/7),col:o%7}; }
 
-function getSegs(days, startWday) {
-  const byRow = {};
-  days.forEach(d => {
-    const p = getPos(d, startWday);
-    (byRow[p.row] = byRow[p.row]||[]).push({ col:p.col, day:d });
-  });
-  const out = [];
-  Object.entries(byRow).forEach(([r, arr]) => {
-    arr.sort((a,b) => a.col-b.col);
-    let s=arr[0], e=arr[0];
-    for(let i=1; i<arr.length; i++){
-      if(arr[i].col === e.col+1){ e=arr[i]; }
-      else { out.push({row:+r,sc:s.col,ec:e.col,sd:s.day,ed:e.day}); s=e=arr[i]; }
+function getSegs(days, sw){
+  const byRow={};
+  days.forEach(d=>{ const p=getPos(d,sw); (byRow[p.row]=byRow[p.row]||[]).push({col:p.col,day:d}); });
+  const out=[];
+  Object.entries(byRow).forEach(([r,arr])=>{
+    arr.sort((a,b)=>a.col-b.col);
+    let s=arr[0],e=arr[0];
+    for(let i=1;i<arr.length;i++){
+      if(arr[i].col===e.col+1){e=arr[i];}
+      else{out.push({row:+r,sc:s.col,ec:e.col,sd:s.day,ed:e.day});s=e=arr[i];}
     }
     out.push({row:+r,sc:s.col,ec:e.col,sd:s.day,ed:e.day});
   });
@@ -145,91 +171,100 @@ function getSegs(days, startWday) {
 }
 
 /* ── 캘린더 렌더링 ── */
-function renderCalendar(year, month, courses) {
-  const startWday   = new Date(year, month-1, 1).getDay();
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const numRows     = Math.ceil((startWday + daysInMonth)/7);
+function renderCalendar(year, month, courses){
+  const startWday   = new Date(year,month-1,1).getDay();
+  const daysInMonth = new Date(year,month,0).getDate();
+  const numRows     = Math.ceil((startWday+daysInMonth)/7);
+  const isThisMonth = (year===today.getFullYear() && month===today.getMonth()+1);
+  const todayDay    = today.getDate();
 
-  const rowBars = Array.from({length:numRows}, ()=>[]);
-  courses.forEach((c, ci) => {
-    const sorted   = [...c.days].sort((a,b)=>a-b);
-    const firstDay = sorted[0];
-    const lastDay  = sorted[sorted.length-1];
-    getSegs(c.days, startWday).forEach(sg => {
-      rowBars[sg.row].push({...sg, c, ci,
-        isOpen:  sg.sd === firstDay,
-        isClose: sg.ed === lastDay
-      });
+  const rowBars = Array.from({length:numRows},()=>[]);
+  courses.forEach((c,ci)=>{
+    const sorted=[...c.days].sort((a,b)=>a-b);
+    const firstDay=sorted[0], lastDay=sorted[sorted.length-1];
+    getSegs(c.days,startWday).forEach(sg=>{
+      rowBars[sg.row].push({...sg,c,ci,
+        isOpen:sg.sd===firstDay, isClose:sg.ed===lastDay});
     });
   });
 
-  const rowMaxSlot = rowBars.map(bars => {
-    const sorted = [...bars].sort((a,b) => a.sc-b.sc || a.ci-b.ci);
-    const claimed = [];
-    sorted.forEach(b => {
+  const rowMaxSlot=rowBars.map(bars=>{
+    const sorted=[...bars].sort((a,b)=>a.sc-b.sc||a.ci-b.ci);
+    const claimed=[];
+    sorted.forEach(b=>{
       let sl=0;
-      while(claimed[sl] !== undefined && claimed[sl] >= b.sc) sl++;
-      b.slot = sl; claimed[sl] = b.ec;
+      while(claimed[sl]!==undefined&&claimed[sl]>=b.sc)sl++;
+      b.slot=sl; claimed[sl]=b.ec;
     });
-    return bars.length ? Math.max(...bars.map(b=>b.slot+1)) : 0;
+    return bars.length?Math.max(...bars.map(b=>b.slot+1)):0;
   });
 
-  const wc = document.getElementById('weeks');
-  wc.innerHTML = '';
+  const wc=document.getElementById('weeks');
+  wc.innerHTML='';
 
-  for(let r=0; r<numRows; r++){
-    const row = document.createElement('div');
-    row.className = 'wrow';
+  for(let r=0;r<numRows;r++){
+    const row=document.createElement('div');
+    row.className='wrow';
+    const dn=document.createElement('div');
+    dn.className='dnums';
 
-    const dn = document.createElement('div');
-    dn.className = 'dnums';
-    for(let c=0; c<7; c++){
-      const day = r*7+c-startWday+1;
-      const cell = document.createElement('div');
-      const holKey = `${year}-${month}-${day}`;
-      let cls = 'dn'+(c===0?' sun':c===6?' sat':'');
-      if(day>=1 && day<=daysInMonth){
-        cell.textContent = day;
-        if(HOL[holKey]) cls += ' hol';
-      } else { cls += ' out'; cell.textContent='-'; }
-      cell.className = cls;
+    for(let c=0;c<7;c++){
+      const day=r*7+c-startWday+1;
+      const cell=document.createElement('div');
+      const holKey=`${year}-${month}-${day}`;
+      let cls='dn'+(c===0?' sun':c===6?' sat':'');
+      if(day>=1&&day<=daysInMonth){
+        if(isThisMonth&&day===todayDay){
+          cls+=' today-cell';
+          cell.className=cls;
+          const circ=document.createElement('div');
+          circ.className='today-circle';
+          circ.textContent=day;
+          cell.appendChild(circ);
+        } else {
+          cell.textContent=day;
+          if(HOL[holKey]) cls+=' hol';
+          cell.className=cls;
+        }
+      } else {
+        cls+=' out'; cell.textContent='-';
+        cell.className=cls;
+      }
       dn.appendChild(cell);
     }
     row.appendChild(dn);
 
-    const bars = rowBars[r];
+    const bars=rowBars[r];
     if(bars.length){
-      const ba = document.createElement('div');
-      ba.className = 'barea';
-      ba.style.height = (rowMaxSlot[r]*SLOT_H+8)+'px';
+      const ba=document.createElement('div');
+      ba.className='barea';
+      ba.style.height=(rowMaxSlot[r]*SLOT_H+8)+'px';
 
-      bars.forEach(b => {
-        const top  = b.slot*SLOT_H+6;
-        const barL = b.sc*CW + GAP;
-        const barR = (b.ec+1)*CW - GAP;
-        const barW = barR - barL;
-        const barMid = top+(SLOT_H-BAR_H)/2;
-        const epTop  = barMid-(EP-BAR_H)/2;
+      bars.forEach(b=>{
+        const top=b.slot*SLOT_H+6;
+        const barL=b.sc*CW+GAP, barR=(b.ec+1)*CW-GAP, barW=barR-barL;
+        const barMid=top+(SLOT_H-BAR_H)/2, epTop=barMid-(EP-BAR_H)/2;
 
-        const tr = document.createElement('div');
+        const tr=document.createElement('div');
         tr.className='bt';
         tr.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid}px;height:${BAR_H}px;background:${b.c.color};opacity:0.82`;
         ba.appendChild(tr);
 
-        const lb = document.createElement('div');
+        /* 바 라벨: 과정명 + 회차 */
+        const lb=document.createElement('div');
         lb.className='bl';
         lb.style.cssText=`left:${barL}%;width:${barW}%;top:${barMid+BAR_H+2}px;color:${b.c.color}`;
-        lb.textContent = b.c.name;
+        lb.textContent=b.c.round ? `${b.c.name} ${b.c.round}` : b.c.name;
         ba.appendChild(lb);
 
         if(b.isOpen){
-          const ds = document.createElement('div');
+          const ds=document.createElement('div');
           ds.className='ep';
           ds.style.cssText=`width:${EP}px;height:${EP}px;left:calc(${barL}% - ${EP_H}px);top:${epTop}px;border-color:${b.c.color}`;
           ba.appendChild(ds);
         }
         if(b.isClose){
-          const de = document.createElement('div');
+          const de=document.createElement('div');
           de.className='ep';
           de.style.cssText=`width:${EP}px;height:${EP}px;left:calc(${barR}% - ${EP_H}px);top:${epTop}px;border-color:${b.c.color}`;
           ba.appendChild(de);
@@ -240,10 +275,11 @@ function renderCalendar(year, month, courses) {
     wc.appendChild(row);
   }
 
-  const leg = document.getElementById('legend');
+  const leg=document.getElementById('legend');
   leg.innerHTML='';
-  courses.forEach(c => {
-    leg.innerHTML+=`<div class="li"><div class="ld" style="background:${c.color}"></div>${c.name}</div>`;
+  courses.forEach(c=>{
+    const label = c.round ? `${c.name} ${c.round}` : c.name;
+    leg.innerHTML+=`<div class="li"><div class="ld" style="background:${c.color}"></div>${label}</div>`;
   });
 
   document.getElementById('hYear').textContent      = year;
@@ -253,38 +289,136 @@ function renderCalendar(year, month, courses) {
 }
 
 /* ── 목록 렌더링 ── */
-function renderList(courses) {
-  const cards = document.getElementById('cards');
-  cards.innerHTML='';
+/*
+  구조:
+  - 과정 × 날짜별로 "세션" 단위로 펼침 (날짜 그룹)
+  - 오늘 기준 미래(위) → 오늘 → 과거(아래, 내림차순)
+  - hidePast=true 이면 과거 세션 숨김
+*/
+function renderList(courses){
+  const scroll = document.getElementById('listScroll');
+  scroll.innerHTML='';
+
   if(!courses.length){
-    cards.innerHTML='<div class="empty-msg">이번 달 등록된 일정이 없습니다.</div>';
+    scroll.innerHTML='<div class="empty-msg">등록된 일정이 없습니다.</div>';
     return;
   }
-  courses.forEach(c => {
-    const s=[...c.days].sort((a,b)=>a-b);
+
+  /* 날짜별 세션 목록 생성 */
+  const sessions=[];
+  courses.forEach(c=>{
+    const sorted=[...c.days].sort((a,b)=>a-b);
+
+    /* 연속 구간으로 묶어서 "기간" 표시 */
     const ranges=[];
-    let st=s[0],en=s[0];
-    for(let i=1;i<s.length;i++){
-      if(s[i]===en+1){en=s[i];}
-      else{ranges.push(st===en?`${st}일`:`${st}–${en}일`);st=en=s[i];}
+    let st=sorted[0],en=sorted[0];
+    for(let i=1;i<sorted.length;i++){
+      if(sorted[i]===en+1){en=sorted[i];}
+      else{ranges.push([st,en]);st=en=sorted[i];}
     }
-    ranges.push(st===en?`${st}일`:`${st}–${en}일`);
-    cards.innerHTML+=`
-    <div class="card">
-      <div class="cbar" style="background:${c.color}"></div>
-      <div class="cbody">
-        <div class="cname">${c.name}</div>
-        ${c.sub?`<div class="csub">${c.sub}</div>`:''}
-        <div class="chips">
-          ${(c.round )?`<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`:''}
-          ${(c.times&&c.times.length)?c.times.map(t=>`<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join(''):''}
-          ${(c.place )?`<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`:''}
-          ${(c.detail)?`<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>`:''}
-        </div>
-        <div class="cdates">일정 : ${ranges.join(' · ')}</div>
-      </div>
-    </div>`;
+    ranges.push([st,en]);
+
+    /* 각 range의 시작일 기준으로 세션 생성 */
+    ranges.forEach(([start,end])=>{
+      /* year/month는 현재 로드된 월 기준 */
+      const dateObj=new Date(curYear, curMonth-1, start);
+      dateObj.setHours(0,0,0,0);
+      const isPast = dateObj < today;
+      const isToday = dateObj.getTime()===today.getTime();
+
+      /* 날짜 표시: "5월 9일 (토)" */
+      const wd=['일','월','화','수','목','금','토'][dateObj.getDay()];
+      const dateLabel = end===start
+        ? `${curMonth}월 ${start}일 (${wd})`
+        : `${curMonth}월 ${start}–${end}일`;
+
+      sessions.push({c, dateObj, dateLabel, isPast, isToday, start, end});
+    });
   });
+
+  /* 미래(오늘 포함) 오름차순, 과거 내림차순으로 분리 */
+  const future = sessions.filter(s=>!s.isPast).sort((a,b)=>a.dateObj-b.dateObj);
+  const past   = sessions.filter(s=>s.isPast).sort((a,b)=>b.dateObj-a.dateObj);
+
+  const todayStr = `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`;
+
+  function makeCard(s){
+    const card=document.createElement('div');
+    card.className='card'+(s.isPast?' past':'');
+    const label=s.c.round?`${s.c.name} ${s.c.round}`:s.c.name;
+    const chips=[
+      s.c.round  ?`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">🔢 ${s.c.round}</span>`:'',
+      (s.c.times&&s.c.times.length)?s.c.times.map(t=>`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">⏰ ${t}</span>`).join(''):'',
+      s.c.place  ?`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">📍 ${s.c.place}</span>`:'',
+      s.c.detail ?`<span class="chip" style="background:${s.c.color}18;color:${s.c.color}">📋 ${s.c.detail}</span>`:''
+    ].join('');
+    card.innerHTML=`
+      <div class="cbar" style="background:${s.c.color}"></div>
+      <div class="cbody">
+        <div class="cname">${label}</div>
+        ${s.c.sub?`<div class="csub">${s.c.sub}</div>`:''}
+        <div class="chips">${chips}</div>
+        <div class="cdates">📅 ${s.dateLabel}</div>
+      </div>`;
+    return card;
+  }
+
+  function makeGroupHeader(label, isToday){
+    const h=document.createElement('div');
+    h.className='date-group'+(isToday?' today-group':'');
+    h.innerHTML=label+(isToday?` <span class="today-badge">오늘</span>`:'');
+    return h;
+  }
+
+  /* 미래 일정 */
+  let prevLabel='';
+  future.forEach(s=>{
+    if(s.dateLabel!==prevLabel){
+      scroll.appendChild(makeGroupHeader(s.dateLabel, s.isToday));
+      prevLabel=s.dateLabel;
+    }
+    scroll.appendChild(makeCard(s));
+  });
+
+  /* 과거 일정 */
+  if(past.length){
+    if(hidePast){
+      const div=document.createElement('div');
+      div.className='past-divider';
+      div.textContent=`지난 일정 ${past.length}건`;
+      div.onclick=toggleFilter;
+      scroll.appendChild(div);
+    } else {
+      const div=document.createElement('div');
+      div.className='past-divider';
+      div.textContent='이전 일정';
+      scroll.appendChild(div);
+      prevLabel='';
+      past.forEach(s=>{
+        if(s.dateLabel!==prevLabel){
+          scroll.appendChild(makeGroupHeader(s.dateLabel, false));
+          prevLabel=s.dateLabel;
+        }
+        scroll.appendChild(makeCard(s));
+      });
+    }
+  }
+
+  document.getElementById('listTitle').textContent=
+    `${curYear}년 ${curMonth}월 · 총 ${sessions.length}건`;
+
+  /* 오늘 위치로 스크롤 */
+  const todayEl=scroll.querySelector('.today-group');
+  if(todayEl) setTimeout(()=>todayEl.scrollIntoView({block:'start',behavior:'smooth'}),100);
+}
+
+/* ── 필터 토글 ── */
+function toggleFilter(){
+  hidePast=!hidePast;
+  const btn=document.getElementById('filterBtn');
+  btn.classList.toggle('on', hidePast);
+  btn.textContent=hidePast?'지난 일정 보기':'지난 일정 숨기기';
+  renderList(allCourses);
 }
 
 /* ── 뷰 전환 ── */
@@ -296,36 +430,34 @@ function sw(v){
 }
 
 /* ── 데이터 로드 ── */
-async function loadMonth(year, month) {
-  const elErr = document.getElementById('errMsg');
-  elErr.style.display='none';
-  elErr.textContent='';
+async function loadMonth(year, month){
+  const elErr=document.getElementById('errMsg');
+  elErr.style.display='none'; elErr.textContent='';
 
-  // 빈 캘린더 먼저 그리기 (로딩 중 UI 유지)
   renderCalendar(year, month, []);
   renderList([]);
 
-  // Worker URL 미설정 체크
   if(WORKER_URL.includes('YOUR_WORKER')){
     elErr.textContent='⚠️ WORKER_URL을 실제 Cloudflare Worker 주소로 변경해주세요.';
     elErr.style.display='block';
     return;
   }
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(()=>controller.abort(), 8000);
-    const res = await fetch(
+  try{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),8000);
+    const res=await fetch(
       `${WORKER_URL}/schedule?year=${year}&month=${month}`,
-      { signal:controller.signal, headers:{'X-Secret-Key':SECRET_KEY} }
+      {signal:controller.signal, headers:{'X-Secret-Key':SECRET_KEY}}
     );
     clearTimeout(timer);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    renderCalendar(data.year, data.month, data.courses);
-    renderList(data.courses);
-  } catch(e){
-    console.error('Worker 오류:', e);
+    const data=await res.json();
+    allCourses=data.courses||[];
+    renderCalendar(data.year, data.month, allCourses);
+    renderList(allCourses);
+  }catch(e){
+    console.error('Worker 오류:',e);
     elErr.textContent=`⚠️ 데이터를 불러오지 못했습니다. (${e.message})`;
     elErr.style.display='block';
   }
@@ -333,10 +465,10 @@ async function loadMonth(year, month) {
 
 /* ── 월 이동 ── */
 function changeMonth(delta){
-  curMonth += delta;
-  if(curMonth>12){curMonth=1; curYear++;}
-  if(curMonth<1) {curMonth=12;curYear--;}
-  loadMonth(curYear, curMonth);
+  curMonth+=delta;
+  if(curMonth>12){curMonth=1;curYear++;}
+  if(curMonth<1){curMonth=12;curYear--;}
+  loadMonth(curYear,curMonth);
 }
 
 /* ── 시작 ── */
