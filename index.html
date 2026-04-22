@@ -38,7 +38,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .dn{text-align:center;padding:6px 2px 0;font-size:12px;font-weight:500;color:#333}
 .dn.sun{color:#e06060}.dn.sat{color:#6688cc}.dn.hol{color:#e06060}.dn.out{color:transparent}
 .today-circle{width:24px;height:24px;border-radius:50%;background:#7a4db5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin:0 auto}
-.barea{position:relative;overflow:visible}
+.barea{position:relative;overflow:hidden}
 .bt{position:absolute;border-radius:5px;cursor:pointer}
 /* 라벨 텍스트가 잘리지 않도록 overflow:visible */
 .bl{position:absolute;font-size:8.5px;font-weight:700;white-space:nowrap;pointer-events:none;text-align:center;overflow:hidden;cursor:pointer}
@@ -218,9 +218,11 @@ function renderCalendar(year,month,courses){
 
     const bars=rowBars[r];
     if(bars.length){
-      /* barea 높이: 마지막 슬롯 top + BAR_H + 라벨높이 + 여유 */
+      /* barea 높이: 슬롯 전체 + 라벨 한 줄 여유
+         라벨 위치 = slot*SLOT_H + (SLOT_H+BAR_H)/2 + 2
+         따라서 마지막 슬롯 라벨 bottom = maxSlot*SLOT_H + LABEL_H + 4 로 충분 */
       const maxSlot=rowMaxSlot[r];
-      const areaH=(maxSlot-1)*SLOT_H + BAR_H + LABEL_H + 4;
+      const areaH=maxSlot*SLOT_H + LABEL_H + 4;
       const ba=document.createElement('div');
       ba.className='barea';
       ba.style.height=areaH+'px';
