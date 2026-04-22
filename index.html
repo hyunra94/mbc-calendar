@@ -291,7 +291,7 @@ function renderList(courses){
 
   if(!courses.length){
     scroll.innerHTML='<div class="empty-msg">등록된 일정이 없습니다.</div>';
-    document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월 · 0건`;
+    document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월`;
     return;
   }
 
@@ -360,7 +360,7 @@ function renderList(courses){
     if(!hidePast) past.forEach(item=>scroll.appendChild(makeCard(item)));
   }
 
-  document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월 · 총 ${items.length}건`;
+  document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월`;
 }
 
 /* ── 필터 ── */
@@ -378,6 +378,7 @@ function sw(v){
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
   document.getElementById(v).classList.add('on');
   document.querySelectorAll('.tb')[v==='cal'?0:1].classList.add('on');
+  if(v==='list') renderList(allCourses); // 항상 최신 데이터로 재렌더링
 }
 
 /* ── 데이터 로드 ── */
