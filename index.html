@@ -225,11 +225,10 @@ function renderCalendar(year,month,courses,prevSet=new Set(),nextSet=new Set()){
     row.appendChild(dn);
 
     const bars=rowBars[r];
-    if(bars.length){
-      /* barea 높이: 슬롯 전체 + 라벨 한 줄 여유
-         라벨 위치 = slot*SLOT_H + (SLOT_H+BAR_H)/2 + 2
-         따라서 마지막 슬롯 라벨 bottom = maxSlot*SLOT_H + LABEL_H + 4 로 충분 */
-      const maxSlot=rowMaxSlot[r];
+    {
+      /* 바 없어도 항상 일정한 최소 여백 확보
+         과정 1개 기준 높이, 2개 이상이면 그에 맞게 늘어남 */
+      const maxSlot=Math.max(1, rowMaxSlot[r]);
       const areaH=maxSlot*SLOT_H + LABEL_H + 4;
       const ba=document.createElement('div');
       ba.className='barea';
@@ -276,7 +275,7 @@ function renderCalendar(year,month,courses,prevSet=new Set(),nextSet=new Set()){
         }
       });
       row.appendChild(ba);
-    }
+    } // end barea block
     wc.appendChild(row);
   }
 
@@ -521,16 +520,38 @@ function renderListGroups(future, past, scroll){
     return card;
   }
 
-  future.forEach(g=>scroll.appendChild(makeCard(g)));
+  /* 전체 내림차순: 미래(위) → 오늘 → 과거(아래)
+     스크롤을 올리면 더 미래, 내리면 더 과거 */
+  const descFuture=[...future].reverse(); // 가까운 미래가 아래, 먼 미래가 위
+  let todayMarker=null;
 
+  // 미래 역순으로 추가 (먼 미래 → 가까운 미래)
+  descFuture.forEach(g=>scroll.appendChild(makeCard(g)));
+
+  // 오늘 기준선
+  todayMarker=document.createElement('div');
+  todayMarker.id='todayMarker';
+  todayMarker.style.cssText='padding:6px 0;font-size:10px;color:#7a4db5;font-weight:700;display:flex;align-items:center;gap:8px';
+  todayMarker.innerHTML='<span style="flex:1;height:1px;background:#e0d0f0"></span>오늘 기준<span style="flex:1;height:1px;background:#e0d0f0"></span>';
+  scroll.appendChild(todayMarker);
+
+  // 과거
   if(past.length){
-    const div=document.createElement('div');
-    div.className='past-divider';
-    div.textContent=hidePast?`지난 일정 ${past.length}건 보기`:'이전 일정';
-    if(hidePast) div.onclick=()=>{hidePast=false;document.getElementById('filterBtn').classList.remove('on');document.getElementById('filterBtn').textContent='지난 일정 숨기기';loadListData();};
-    scroll.appendChild(div);
-    if(!hidePast) past.forEach(g=>scroll.appendChild(makeCard(g)));
+    if(hidePast){
+      const div=document.createElement('div');
+      div.className='past-divider';
+      div.textContent=`지난 일정 ${past.length}건 보기`;
+      div.onclick=()=>{hidePast=false;document.getElementById('filterBtn').classList.remove('on');document.getElementById('filterBtn').textContent='지난 일정 숨기기';loadListData();};
+      scroll.appendChild(div);
+    } else {
+      past.forEach(g=>scroll.appendChild(makeCard(g)));
+    }
   }
+
+  // 오늘 기준선으로 스크롤
+  setTimeout(()=>{
+    if(todayMarker) todayMarker.scrollIntoView({block:'center',behavior:'smooth'});
+  },150);
 }
 
 /* ── 데이터 로드 ── */
