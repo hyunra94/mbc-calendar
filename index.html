@@ -136,7 +136,7 @@ let allCourses=[], hidePast=false;
    SLOT_H: 슬롯 높이. BAR_H(9) + 라벨(10) + 여유(3) = 22 → 넉넉히 28
    barea height = rowMaxSlot * SLOT_H + LABEL_H (라벨 한 줄 여유)
 */
-const BAR_H=9, GAP=1.2, EP=12, EP_H=EP/2, SLOT_H=28, LABEL_H=14, CW=100/7;
+const BAR_H=9, GAP=1.2, EP=12, EP_H=EP/2, SLOT_H=22, LABEL_H=13, CW=100/7;
 
 function getPos(day,sw){const o=sw+day-1;return{row:Math.floor(o/7),col:o%7};}
 
@@ -157,7 +157,7 @@ function getSegs(days,sw){
 }
 
 /* ── 캘린더 렌더링 ── */
-function renderCalendar(year,month,courses){
+function renderCalendar(year,month,courses,prevSet=new Set(),nextSet=new Set()){
   const startWday=new Date(year,month-1,1).getDay();
   const daysInMonth=new Date(year,month,0).getDate();
   const numRows=Math.ceil((startWday+daysInMonth)/7);
@@ -168,8 +168,16 @@ function renderCalendar(year,month,courses){
   courses.forEach((c,ci)=>{
     const sorted=[...c.days].sort((a,b)=>a-b);
     const fd=sorted[0],ld=sorted[sorted.length-1];
+    const ck=`${c.name}__${c.round||''}`;
+    /* 이전 월에 같은 과정이 있으면 이 월의 첫날은 전체 개강이 아님 */
+    const continuesFromPrev=prevSet.has(ck);
+    /* 다음 월에 같은 과정이 있으면 이 월의 마지막날은 전체 종강이 아님 */
+    const continuesToNext=nextSet.has(ck);
     getSegs(c.days,startWday).forEach(sg=>{
-      rowBars[sg.row].push({...sg,c,ci,isOpen:sg.sd===fd,isClose:sg.ed===ld});
+      rowBars[sg.row].push({...sg,c,ci,
+        isOpen: sg.sd===fd && !continuesFromPrev,
+        isClose:sg.ed===ld && !continuesToNext
+      });
     });
   });
 
@@ -422,54 +430,54 @@ async function loadListData(){
   // 병렬 요청
   const results=await Promise.all(targets.map(t=>fetchMonth(t.y,t.m)));
 
-  // 과정별로 합치기 (같은 과정명+색상이면 동일 과정)
-  // 각 코스에 year, month 정보 추가
-  const allItems=[];
-  results.forEach((data,i)=>{
+  // 과정명+회차 기준으로 월 경계 없이 통합 그룹핑
+  const groupMap={};
+  const seen=new Set();
+
+  results.forEach(data=>{
     if(!data||!data.courses) return;
     const {year,month,courses}=data;
     courses.forEach(c=>{
+      const gk=`${c.name}__${c.round||''}`;
+      if(!groupMap[gk]){
+        groupMap[gk]={c,days:[],firstDate:null,lastDate:null};
+      }
       c.days.forEach(day=>{
+        const dateKey=`${year}-${month}-${day}`;
+        if(seen.has(dateKey)) return;
+        seen.add(dateKey);
         const dateObj=new Date(year,month-1,day);
         dateObj.setHours(0,0,0,0);
-        // 이미 같은 과정+날짜가 있으면 스킵
-        const key=`${c.name}-${year}-${month}-${day}`;
-        allItems.push({c,day,year,month,dateObj,key});
+        groupMap[gk].days.push({day,year,month,dateObj});
       });
     });
   });
 
-  // 중복 제거
-  const seen=new Set();
-  const unique=allItems.filter(i=>{
-    if(seen.has(i.key)) return false;
-    seen.add(i.key);
-    return true;
-  });
-
-  // 과정+월 단위로 그룹핑
-  const groupMap={};
-  unique.forEach(i=>{
-    const gk=`${i.c.name}__${i.year}__${i.month}`;
-    if(!groupMap[gk]) groupMap[gk]={c:i.c,year:i.year,month:i.month,days:[],firstDate:null,lastDate:null};
-    groupMap[gk].days.push({day:i.day,dateObj:i.dateObj});
-  });
-
-  // 각 그룹 정리
+  // 각 그룹 날짜 정렬 + 표시 문자열 생성
   const groups=Object.values(groupMap).map(g=>{
     g.days.sort((a,b)=>a.dateObj-b.dateObj);
     g.firstDate=g.days[0].dateObj;
     g.lastDate=g.days[g.days.length-1].dateObj;
-    // 날짜 범위 문자열
-    const dayNums=g.days.map(d=>d.day);
-    const ranges=[];
-    let st=dayNums[0],en=dayNums[0];
-    for(let i=1;i<dayNums.length;i++){
-      if(dayNums[i]===en+1){en=dayNums[i];}
-      else{ranges.push(st===en?`${st}일`:`${st}–${en}일`);st=en=dayNums[i];}
-    }
-    ranges.push(st===en?`${st}일`:`${st}–${en}일`);
-    g.dateStr=`${g.month}월 ${ranges.join(', ')}`;
+
+    // 월별로 묶어서 "2월 7·14일, 3월 7·14일" 형태로 표시
+    const byMonth={};
+    g.days.forEach(d=>{
+      const mk=`${d.year}-${d.month}`;
+      if(!byMonth[mk]) byMonth[mk]={year:d.year,month:d.month,days:[]};
+      byMonth[mk].days.push(d.day);
+    });
+    const parts=Object.values(byMonth).map(bm=>{
+      const sorted=[...bm.days].sort((a,b)=>a-b);
+      const ranges=[];
+      let st=sorted[0],en=sorted[0];
+      for(let i=1;i<sorted.length;i++){
+        if(sorted[i]===en+1){en=sorted[i];}
+        else{ranges.push(st===en?`${st}일`:`${st}–${en}일`);st=en=sorted[i];}
+      }
+      ranges.push(st===en?`${st}일`:`${st}–${en}일`);
+      return `${bm.month}월 ${ranges.join('·')}`;
+    });
+    g.dateStr=parts.join(', ');
     g.isPast=g.lastDate<today;
     g.hasToday=g.firstDate<=today&&today<=g.lastDate;
     return g;
@@ -526,11 +534,16 @@ function renderListGroups(future, past, scroll){
 }
 
 /* ── 데이터 로드 ── */
+function adjMonth(year,month,delta){
+  let m=month+delta, y=year;
+  if(m>12){m-=12;y++;} if(m<1){m+=12;y--;}
+  return{y,m};
+}
+
 async function loadMonth(year,month){
   const elErr=document.getElementById('errMsg');
   elErr.style.display='none';elErr.textContent='';
-  renderCalendar(year,month,[]);
-  renderList([]);
+  renderCalendar(year,month,[],new Set(),new Set());
 
   if(WORKER_URL.includes('YOUR_WORKER')){
     elErr.textContent='⚠️ WORKER_URL을 실제 Cloudflare Worker 주소로 변경해주세요.';
@@ -538,33 +551,23 @@ async function loadMonth(year,month){
     return;
   }
 
-  /* 캐시 확인 */
-  const cacheKey=`kdt-${year}-${month}`;
-  const cached=sessionStorage.getItem(cacheKey);
-  if(cached){
-    try{
-      const data=JSON.parse(cached);
-      allCourses=data.courses||[];
-      renderCalendar(data.year,data.month,allCourses);
-      renderList(allCourses);
-      return;
-    }catch(e){sessionStorage.removeItem(cacheKey);}
-  }
-
   try{
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),8000);
-    const res=await fetch(
-      `${WORKER_URL}/schedule?year=${year}&month=${month}`,
-      {signal:controller.signal,headers:{'X-Secret-Key':SECRET_KEY}}
-    );
-    clearTimeout(timer);
-    if(!res.ok)throw new Error(`HTTP ${res.status}`);
-    const data=await res.json();
-    sessionStorage.setItem(cacheKey,JSON.stringify(data));
-    allCourses=data.courses||[];
-    renderCalendar(data.year,data.month,allCourses);
-    renderList(allCourses);
+    const prev=adjMonth(year,month,-1), next=adjMonth(year,month,1);
+    /* 현재 + 인접 월 병렬 요청 → 경계 dot 판단에 사용 */
+    const [currData,prevData,nextData]=await Promise.all([
+      fetchMonth(year,month),
+      fetchMonth(prev.y,prev.m),
+      fetchMonth(next.y,next.m)
+    ]);
+    if(!currData) throw new Error('데이터 없음');
+
+    /* 인접 월에 존재하는 과정 키 셋 */
+    const courseKey=c=>`${c.name}__${c.round||''}`;
+    const prevSet=new Set((prevData?.courses||[]).map(courseKey));
+    const nextSet=new Set((nextData?.courses||[]).map(courseKey));
+
+    allCourses=currData.courses||[];
+    renderCalendar(currData.year,currData.month,allCourses,prevSet,nextSet);
   }catch(e){
     console.error('Worker 오류:',e);
     elErr.textContent=`⚠️ 데이터를 불러오지 못했습니다. (${e.message})`;
