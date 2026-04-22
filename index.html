@@ -369,7 +369,7 @@ function toggleFilter(){
   const btn=document.getElementById('filterBtn');
   btn.classList.toggle('on',hidePast);
   btn.textContent=hidePast?'지난 일정 보기':'지난 일정 숨기기';
-  renderList(allCourses);
+  loadListData();
 }
 
 /* ── 뷰 전환 ── */
@@ -378,7 +378,151 @@ function sw(v){
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
   document.getElementById(v).classList.add('on');
   document.querySelectorAll('.tb')[v==='cal'?0:1].classList.add('on');
-  if(v==='list') renderList(allCourses); // 항상 최신 데이터로 재렌더링
+  if(v==='list') loadListData();
+}
+
+/* ── 목록용 멀티월 로드 ── */
+let listLoaded = false; // 중복 로드 방지
+
+async function fetchMonth(year, month){
+  const cacheKey=`kdt-${year}-${month}`;
+  const cached=sessionStorage.getItem(cacheKey);
+  if(cached){
+    try{ return JSON.parse(cached); }catch(e){ sessionStorage.removeItem(cacheKey); }
+  }
+  try{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),8000);
+    const res=await fetch(
+      `${WORKER_URL}/schedule?year=${year}&month=${month}`,
+      {signal:controller.signal,headers:{'X-Secret-Key':SECRET_KEY}}
+    );
+    clearTimeout(timer);
+    if(!res.ok) return null;
+    const data=await res.json();
+    sessionStorage.setItem(cacheKey,JSON.stringify(data));
+    return data;
+  }catch(e){ return null; }
+}
+
+async function loadListData(){
+  const scroll=document.getElementById('listScroll');
+  scroll.innerHTML='<div class="empty-msg">불러오는 중...</div>';
+  document.getElementById('listTitle').textContent='일정 목록';
+
+  // 범위: 현재월-2 ~ 현재월+12
+  const targets=[];
+  for(let delta=-2; delta<=12; delta++){
+    let y=curYear, m=curMonth+delta;
+    while(m>12){m-=12;y++;}
+    while(m<1) {m+=12;y--;}
+    targets.push({y,m});
+  }
+
+  // 병렬 요청
+  const results=await Promise.all(targets.map(t=>fetchMonth(t.y,t.m)));
+
+  // 과정별로 합치기 (같은 과정명+색상이면 동일 과정)
+  // 각 코스에 year, month 정보 추가
+  const allItems=[];
+  results.forEach((data,i)=>{
+    if(!data||!data.courses) return;
+    const {year,month,courses}=data;
+    courses.forEach(c=>{
+      c.days.forEach(day=>{
+        const dateObj=new Date(year,month-1,day);
+        dateObj.setHours(0,0,0,0);
+        // 이미 같은 과정+날짜가 있으면 스킵
+        const key=`${c.name}-${year}-${month}-${day}`;
+        allItems.push({c,day,year,month,dateObj,key});
+      });
+    });
+  });
+
+  // 중복 제거
+  const seen=new Set();
+  const unique=allItems.filter(i=>{
+    if(seen.has(i.key)) return false;
+    seen.add(i.key);
+    return true;
+  });
+
+  // 과정+월 단위로 그룹핑
+  const groupMap={};
+  unique.forEach(i=>{
+    const gk=`${i.c.name}__${i.year}__${i.month}`;
+    if(!groupMap[gk]) groupMap[gk]={c:i.c,year:i.year,month:i.month,days:[],firstDate:null,lastDate:null};
+    groupMap[gk].days.push({day:i.day,dateObj:i.dateObj});
+  });
+
+  // 각 그룹 정리
+  const groups=Object.values(groupMap).map(g=>{
+    g.days.sort((a,b)=>a.dateObj-b.dateObj);
+    g.firstDate=g.days[0].dateObj;
+    g.lastDate=g.days[g.days.length-1].dateObj;
+    // 날짜 범위 문자열
+    const dayNums=g.days.map(d=>d.day);
+    const ranges=[];
+    let st=dayNums[0],en=dayNums[0];
+    for(let i=1;i<dayNums.length;i++){
+      if(dayNums[i]===en+1){en=dayNums[i];}
+      else{ranges.push(st===en?`${st}일`:`${st}–${en}일`);st=en=dayNums[i];}
+    }
+    ranges.push(st===en?`${st}일`:`${st}–${en}일`);
+    g.dateStr=`${g.month}월 ${ranges.join(', ')}`;
+    g.isPast=g.lastDate<today;
+    g.hasToday=g.firstDate<=today&&today<=g.lastDate;
+    return g;
+  });
+
+  // 미래+현재: 오름차순 / 과거: 내림차순
+  const future=groups.filter(g=>!g.isPast).sort((a,b)=>a.firstDate-b.firstDate);
+  const past  =groups.filter(g=>g.isPast ).sort((a,b)=>b.firstDate-a.firstDate);
+
+  renderListGroups(future, past, scroll);
+  document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월 기준`;
+}
+
+function renderListGroups(future, past, scroll){
+  scroll.innerHTML='';
+
+  if(!future.length&&!past.length){
+    scroll.innerHTML='<div class="empty-msg">등록된 일정이 없습니다.</div>';
+    return;
+  }
+
+  function makeCard(g){
+    const {c,dateStr,isPast,hasToday}=g;
+    const card=document.createElement('div');
+    card.className='card'+(isPast?' past':'');
+    const label=c.round?`${c.name} ${c.round}`:c.name;
+    const chips=[
+      c.round ?`<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`:'',
+      (c.times&&c.times.length)?c.times.map(t=>`<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join(''):'',
+      c.place ?`<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`:'',
+      c.detail?`<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>`:''
+    ].join('');
+    card.innerHTML=`
+      <div class="cbar" style="background:${c.color};min-height:60px"></div>
+      <div class="cbody">
+        <div class="cname">${label}${hasToday?` <span style="font-size:9px;background:#7a4db5;color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle">진행중</span>`:''}</div>
+        ${c.sub?`<div class="csub">${c.sub}</div>`:''}
+        <div class="chips">${chips}</div>
+        <div class="cdates">📅 ${dateStr}</div>
+      </div>`;
+    return card;
+  }
+
+  future.forEach(g=>scroll.appendChild(makeCard(g)));
+
+  if(past.length){
+    const div=document.createElement('div');
+    div.className='past-divider';
+    div.textContent=hidePast?`지난 일정 ${past.length}건 보기`:'이전 일정';
+    if(hidePast) div.onclick=()=>{hidePast=false;document.getElementById('filterBtn').classList.remove('on');document.getElementById('filterBtn').textContent='지난 일정 숨기기';loadListData();};
+    scroll.appendChild(div);
+    if(!hidePast) past.forEach(g=>scroll.appendChild(makeCard(g)));
+  }
 }
 
 /* ── 데이터 로드 ── */
