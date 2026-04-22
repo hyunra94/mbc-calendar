@@ -34,7 +34,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .dl.sun{color:#e06060}.dl.sat{color:#6688cc}
 .wrow{border-top:1px solid #f0f0f0;position:relative}
 .dnums{display:grid;grid-template-columns:repeat(7,1fr)}
-.dn{text-align:center;padding:9px 2px 7px;font-size:12px;font-weight:500;color:#333}
+.dn{text-align:center;padding:7px 2px 3px;font-size:12px;font-weight:500;color:#333}
 .dn.sun{color:#e06060}.dn.sat{color:#6688cc}.dn.hol{color:#e06060}.dn.out{color:transparent}
 .dn.today-cell{position:relative}
 .today-circle{width:24px;height:24px;border-radius:50%;background:#7a4db5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin:0 auto}
@@ -149,7 +149,7 @@ let hidePast = false;
 let allCourses = [];
 
 /* ── 레이아웃 상수 ── */
-const BAR_H=10, GAP=1.2, EP=13, EP_H=EP/2, SLOT_H=36, CW=100/7;
+const BAR_H=9, GAP=1.2, EP=12, EP_H=EP/2, SLOT_H=26, CW=100/7;
 
 /* ── 유틸 ── */
 function getPos(day, sw){ const o=sw+day-1; return{row:Math.floor(o/7),col:o%7}; }
@@ -238,10 +238,10 @@ function renderCalendar(year, month, courses){
     if(bars.length){
       const ba=document.createElement('div');
       ba.className='barea';
-      ba.style.height=(rowMaxSlot[r]*SLOT_H+8)+'px';
+      ba.style.height=(rowMaxSlot[r]*SLOT_H+4)+'px';
 
       bars.forEach(b=>{
-        const top=b.slot*SLOT_H+6;
+        const top=b.slot*SLOT_H+2;
         const barL=b.sc*CW+GAP, barR=(b.ec+1)*CW-GAP, barW=barR-barL;
         const barMid=top+(SLOT_H-BAR_H)/2, epTop=barMid-(EP-BAR_H)/2;
 
@@ -443,6 +443,19 @@ async function loadMonth(year, month){
     return;
   }
 
+  // 캐시 확인 (같은 세션 내 재방문 시 즉시 렌더링)
+  const cacheKey=`kdt-${year}-${month}`;
+  const cached=sessionStorage.getItem(cacheKey);
+  if(cached){
+    try{
+      const data=JSON.parse(cached);
+      allCourses=data.courses||[];
+      renderCalendar(data.year,data.month,allCourses);
+      renderList(allCourses);
+      return;
+    }catch(e){ sessionStorage.removeItem(cacheKey); }
+  }
+
   try{
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),8000);
@@ -453,6 +466,7 @@ async function loadMonth(year, month){
     clearTimeout(timer);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data=await res.json();
+    sessionStorage.setItem(cacheKey, JSON.stringify(data)); // 캐시 저장
     allCourses=data.courses||[];
     renderCalendar(data.year, data.month, allCourses);
     renderList(allCourses);
