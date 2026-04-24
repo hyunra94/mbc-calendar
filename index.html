@@ -522,6 +522,20 @@ function buildFilterButtons(groups){
   groups.forEach(g=>{
     if(!seen.has(g.c.name)){seen.add(g.c.name);courses.push(g.c);}
   });
+  // ★ 필터 고정 순서 — 과정명이 바뀌면 여기만 수정 ★
+  const FILTER_ORDER=[
+    '드론을 활용한 항공영상 촬영 및 콘텐츠 제작',
+    '생성형 AI 교육(기본 과정)',
+    '생성형 AI 교육(콘텐츠 제작)',
+    '프리미어 프로를 활용한 영상 편집 제작 과정',
+    '실감콘텐츠 영상 제작을 위한 촬영 교육',
+    '가상 스튜디오 환경 구축 및 콘텐츠 제작',
+  ];
+  courses.sort((a,b)=>{
+    const ai=FILTER_ORDER.indexOf(a.name);
+    const bi=FILTER_ORDER.indexOf(b.name);
+    return (ai===-1?999:ai)-(bi===-1?999:bi);
+  });
   if(courses.length<=1){wrap.style.display='none';return;}
   wrap.style.display='flex';
   // 전체 버튼
