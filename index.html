@@ -62,16 +62,27 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 .today-badge{font-size:9px;background:#7a4db5;color:#fff;padding:1px 6px;border-radius:8px;font-weight:700}
 .past-divider{padding:8px 0 6px;font-size:10px;color:#ddd;display:flex;align-items:center;gap:8px;cursor:pointer}
 .past-divider::before,.past-divider::after{content:'';flex:1;height:1px;background:#f0f0f0}
-.card{border-radius:12px;border:1px solid #f0ecf8;background:#fff;padding:12px 14px;display:flex;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:8px}
+.card{border-radius:12px;border:1px solid #f0ecf8;background:#fff;padding:12px 14px;display:flex;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:8px;cursor:pointer;transition:box-shadow .15s}
+.card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .card.past{opacity:.7}
 .cbar{width:4px;border-radius:4px;flex-shrink:0}
 .cbody{flex:1;min-width:0}
-.cname{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:3px}
-.csub{font-size:11px;color:#bbb;margin-bottom:7px}
-.chips{display:flex;flex-wrap:wrap;gap:5px}
-.chip{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:500}
-.cdates{margin-top:5px;font-size:10px;color:#888;line-height:1.9}
-.card.past .cdates{color:#aaa}
+/* 제목줄: 메인타이틀 + 과목명 한줄 */
+.ctitle-row{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+.cname{font-size:13px;font-weight:700;color:#1a1a1a;white-space:nowrap}
+.csub{font-size:11px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 비고: 검정색 */
+.cdetail{font-size:11px;color:#444;margin-bottom:5px;line-height:1.5}
+/* 날짜+시간 pill */
+.cinfo{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.cpill{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 8px;border-radius:20px;background:#f5f0ff;color:#7a4db5;font-weight:500}
+.cpill.time{background:#fff5e6;color:#c07020}
+.cpill.place{background:#e8f4ff;color:#2a72b5}
+.card.past .cpill{opacity:.8}
+/* 필터 */
+.filter-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.filt-btn{font-family:'Noto Sans KR',sans-serif;font-size:10px;padding:4px 10px;border-radius:20px;border:1.5px solid #e0d0f0;background:#fff;color:#aaa;cursor:pointer;transition:all .15s;white-space:nowrap}
+.filt-btn.on{border-color:var(--fc);color:var(--fc);background:color-mix(in srgb,var(--fc) 10%,white)}
 .empty-msg{text-align:center;padding:40px 0;font-size:13px;color:#ccc}
 </style>
 </head>
@@ -110,6 +121,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
       <span class="list-title" id="listTitle"></span>
       <button class="filter-btn" id="filterBtn" onclick="toggleFilter()">지난 일정 숨기기</button>
     </div>
+    <div class="filter-wrap" id="filterWrap"></div>
     <div class="list-scroll" id="listScroll"></div>
   </div>
 </div>
@@ -131,7 +143,7 @@ const MONTHS=['','January','February','March','April','May','June',
 const today=new Date(); today.setHours(0,0,0,0);
 const now=new Date();
 let curYear=now.getFullYear(), curMonth=now.getMonth()+1;
-let allCourses=[], hidePast=false;
+let allCourses=[], hidePast=false, activeFilter=null;
 
 /* 레이아웃 상수
    SLOT_H: 슬롯 높이. BAR_H(9) + 라벨(10) + 여유(3) = 22 → 넉넉히 28
@@ -359,13 +371,13 @@ function renderList(courses){
   future.forEach(item=>scroll.appendChild(makeCard(item)));
 
   /* 과거 */
-  if(past.length){
+  if(filtPast.length){
     const div=document.createElement('div');
     div.className='past-divider';
-    div.textContent=hidePast?`지난 일정 ${past.length}건 보기`:'이전 일정';
+    div.textContent=hidePast?`지난 일정 ${filtPast.length}건 보기`:'이전 일정';
     if(hidePast)div.onclick=toggleFilter;
     scroll.appendChild(div);
-    if(!hidePast) past.forEach(item=>scroll.appendChild(makeCard(item)));
+    if(!hidePast) filtPast.forEach(item=>scroll.appendChild(makeCard(item)));
   }
 
   document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월`;
@@ -494,11 +506,48 @@ async function loadListData(){
   document.getElementById('listTitle').textContent=`${curYear}년 ${curMonth}월 기준`;
 }
 
+function buildFilterButtons(groups){
+  const wrap=document.getElementById('filterWrap');
+  wrap.innerHTML='';
+  // 과목명 중복제거
+  const seen=new Set();
+  const courses=[];
+  groups.forEach(g=>{
+    if(!seen.has(g.c.name)){seen.add(g.c.name);courses.push(g.c);}
+  });
+  if(courses.length<=1){wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  // 전체 버튼
+  const allBtn=document.createElement('button');
+  allBtn.className='filt-btn'+(activeFilter===null?' on':'');
+  allBtn.style.setProperty('--fc','#7a4db5');
+  allBtn.textContent='전체';
+  allBtn.onclick=()=>{activeFilter=null;loadListData();};
+  wrap.appendChild(allBtn);
+  courses.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='filt-btn'+(activeFilter===c.name?' on':'');
+    btn.style.setProperty('--fc',c.color);
+    btn.style.borderColor=activeFilter===c.name?c.color:'';
+    btn.textContent=c.name;
+    btn.onclick=()=>{activeFilter=c.name;loadListData();};
+    wrap.appendChild(btn);
+  });
+}
+
 function renderListGroups(future, past, scroll){
   scroll.innerHTML='';
+  const allGroups=[...future,...past];
 
-  if(!future.length&&!past.length){
-    scroll.innerHTML='<div class="empty-msg">등록된 일정이 없습니다.</div>';
+  // 필터 버튼 생성
+  buildFilterButtons(allGroups);
+
+  // activeFilter 적용
+  const filtFuture=activeFilter?future.filter(g=>g.c.name===activeFilter):future;
+  const filtPast  =activeFilter?past.filter(g=>g.c.name===activeFilter):past;
+
+  if(!filtFuture.length&&!filtPast.length){
+    scroll.innerHTML='<div class="empty-msg">해당 과목의 일정이 없습니다.</div>';
     return;
   }
 
@@ -507,30 +556,39 @@ function renderListGroups(future, past, scroll){
     const card=document.createElement('div');
     card.className='card'+(isPast?' past':'');
     const label=c.round?`${c.name} ${c.round}`:c.name;
-    const chips=[
-      c.round ?`<span class="chip" style="background:${c.color}18;color:${c.color}">🔢 ${c.round}</span>`:'',
-      (c.times&&c.times.length)?c.times.map(t=>`<span class="chip" style="background:${c.color}18;color:${c.color}">⏰ ${t}</span>`).join(''):'',
-      c.place ?`<span class="chip" style="background:${c.color}18;color:${c.color}">📍 ${c.place}</span>`:'',
-      c.detail?`<span class="chip" style="background:${c.color}18;color:${c.color}">📋 ${c.detail}</span>`:''
-    ].join('');
-    // 대표 월: 첫 날짜 기준
     const repYear=g.days[0].year, repMonth=g.days[0].month;
     card.dataset.year=repYear;
     card.dataset.month=repMonth;
+    card.dataset.courseName=c.name;
+    // 클릭 → 캘린더 해당 월로 이동
+    card.onclick=()=>{
+      curYear=repYear; curMonth=repMonth;
+      loadMonth(repYear,repMonth);
+      sw('cal');
+    };
+    const timePills=(c.times&&c.times.length)?c.times.map(t=>`<span class="cpill time">⏰ ${t}</span>`).join(''):'';
+    const placePill=c.place?`<span class="cpill place">📍 ${c.place}</span>`:'';
     card.innerHTML=`
-      <div class="cbar" style="background:${c.color};min-height:60px"></div>
+      <div class="cbar" style="background:${c.color};min-height:56px"></div>
       <div class="cbody">
-        <div class="cname">${label}${hasToday?` <span style="font-size:9px;background:#7a4db5;color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle">진행중</span>`:''}</div>
-        ${c.sub?`<div class="csub">${c.sub}</div>`:''}
-        <div class="chips">${chips}</div>
-        <div class="cdates">📅 ${dateStr}</div>
+        <div class="ctitle-row">
+          <span class="cname" style="color:${c.color}">${label}</span>
+          ${c.sub?`<span class="csub">${c.sub}</span>`:''}
+          ${hasToday?`<span style="font-size:9px;background:#7a4db5;color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;flex-shrink:0">진행중</span>`:''}
+        </div>
+        ${c.detail?`<div class="cdetail">${c.detail}</div>`:''}
+        <div class="cinfo">
+          <span class="cpill">📅 ${dateStr}</span>
+          ${timePills}
+          ${placePill}
+        </div>
       </div>`;
     return card;
   }
 
   /* 전체 내림차순: 미래(위) → 오늘 → 과거(아래)
      스크롤을 올리면 더 미래, 내리면 더 과거 */
-  const descFuture=[...future].reverse(); // 가까운 미래가 아래, 먼 미래가 위
+  const descFuture=[...filtFuture].reverse(); // 가까운 미래가 아래, 먼 미래가 위
   let todayMarker=null;
 
   // 미래 역순으로 추가 (먼 미래 → 가까운 미래)
@@ -544,7 +602,7 @@ function renderListGroups(future, past, scroll){
   scroll.appendChild(todayMarker);
 
   // 과거
-  if(past.length){
+  if(filtPast.length){
     if(hidePast){
       const div=document.createElement('div');
       div.className='past-divider';
@@ -552,7 +610,7 @@ function renderListGroups(future, past, scroll){
       div.onclick=()=>{hidePast=false;document.getElementById('filterBtn').classList.remove('on');document.getElementById('filterBtn').textContent='지난 일정 숨기기';loadListData();};
       scroll.appendChild(div);
     } else {
-      past.forEach(g=>scroll.appendChild(makeCard(g)));
+      filtPast.forEach(g=>scroll.appendChild(makeCard(g)));
     }
   }
 
