@@ -431,8 +431,8 @@ async function loadListData(){
   const results=await Promise.all(targets.map(t=>fetchMonth(t.y,t.m)));
 
   // 과정명+회차 기준으로 월 경계 없이 통합 그룹핑
+  // seen은 과정별로 분리 → 같은 날짜라도 다른 과정이면 독립적으로 추가
   const groupMap={};
-  const seen=new Set();
 
   results.forEach(data=>{
     if(!data||!data.courses) return;
@@ -440,18 +440,21 @@ async function loadListData(){
     courses.forEach(c=>{
       const gk=`${c.name}__${c.round||''}`;
       if(!groupMap[gk]){
-        groupMap[gk]={c,days:[],firstDate:null,lastDate:null};
+        groupMap[gk]={c,days:[],seenDates:new Set()};
       }
       c.days.forEach(day=>{
         const dateKey=`${year}-${month}-${day}`;
-        if(seen.has(dateKey)) return;
-        seen.add(dateKey);
+        if(groupMap[gk].seenDates.has(dateKey)) return; // 같은 과정 내 중복만 방지
+        groupMap[gk].seenDates.add(dateKey);
         const dateObj=new Date(year,month-1,day);
         dateObj.setHours(0,0,0,0);
         groupMap[gk].days.push({day,year,month,dateObj});
       });
     });
   });
+
+  // days 없는 그룹 제거 (안전장치)
+  Object.keys(groupMap).forEach(k=>{ if(!groupMap[k].days.length) delete groupMap[k]; });
 
   // 각 그룹 날짜 정렬 + 표시 문자열 생성
   const groups=Object.values(groupMap).map(g=>{
