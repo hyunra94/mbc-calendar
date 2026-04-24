@@ -74,8 +74,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:#fafafa;color:#1a1a1a}
 /* 비고: 검정색 */
 .cdetail{font-size:11px;color:#444;margin-bottom:5px;line-height:1.5}
 /* 날짜+시간 pill */
-.cinfo{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
-.cpill{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 8px;border-radius:20px;background:#f5f0ff;color:#7a4db5;font-weight:500}
+.cinfo{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.cinfo-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.cpill{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 8px;border-radius:20px;background:#f5f0ff;color:#7a4db5;font-weight:500;white-space:nowrap}
 .cpill.time{background:#fff5e6;color:#c07020}
 .cpill.place{background:#e8f4ff;color:#2a72b5}
 .card.past .cpill{opacity:.8}
@@ -529,7 +530,16 @@ function buildFilterButtons(groups){
     btn.className='filt-btn'+(activeFilter===c.name?' on':'');
     btn.style.setProperty('--fc',c.color);
     btn.style.borderColor=activeFilter===c.name?c.color:'';
-    btn.textContent=c.name;
+    // 아이콘: URL이면 img, 아니면 이모지 텍스트
+    let iconHtml='';
+    if(c.icon){
+      if(c.icon.startsWith('http')||c.icon.startsWith('/')){
+        iconHtml=`<img src="${c.icon}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:3px;border-radius:2px">`;
+      } else {
+        iconHtml=`<span style="margin-right:2px">${c.icon}</span>`;
+      }
+    }
+    btn.innerHTML=iconHtml+c.name;
     btn.onclick=()=>{activeFilter=c.name;loadListData();};
     wrap.appendChild(btn);
   });
@@ -578,9 +588,8 @@ function renderListGroups(future, past, scroll){
         </div>
         ${c.detail?`<div class="cdetail">${c.detail}</div>`:''}
         <div class="cinfo">
-          <span class="cpill">📅 ${dateStr}</span>
-          ${timePills}
-          ${placePill}
+          <div class="cinfo-row"><span class="cpill">📅 ${dateStr}</span></div>
+          ${(timePills||placePill)?`<div class="cinfo-row">${timePills}${placePill}</div>`:''}
         </div>
       </div>`;
     return card;
