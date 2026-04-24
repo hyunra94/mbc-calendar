@@ -657,22 +657,23 @@ function renderListGroups(future, past, scroll){
     if(todayMarker) todayMarker.scrollIntoView({block:'center',behavior:'smooth'});
   },150);
 
-  // 스크롤 이벤트: 뷰포트 최상단에 걸친 카드의 월을 타이틀에 표시
+  // 스크롤 이벤트: scroll 컨테이너 상단에 걸친 카드의 월을 타이틀에 표시
   const titleEl=document.getElementById('listTitle');
   function updateTitle(){
     const cards=[...scroll.querySelectorAll('.card[data-month]')];
-    const scrollTop=scroll.scrollTop;
-    // 스크롤 위치 기준으로 가장 위에 보이는 카드
+    if(!cards.length) return;
+    const scrollRect=scroll.getBoundingClientRect();
+    // scroll 컨테이너 상단(top) 기준으로 가장 가까운 카드 찾기
     let topCard=null;
     for(const card of cards){
-      if(card.offsetTop <= scrollTop + 10){
+      const cardRect=card.getBoundingClientRect();
+      // 카드 하단이 컨테이너 상단보다 아래에 있으면 아직 보임
+      if(cardRect.bottom >= scrollRect.top){
         topCard=card;
-      } else {
         break;
       }
     }
-    if(!topCard) topCard=cards[cards.length-1]; // 전부 아래면 마지막
-    if(!topCard) topCard=cards[0];
+    if(!topCard) topCard=cards[cards.length-1];
     if(topCard){
       const y=topCard.dataset.year, m=topCard.dataset.month;
       if(y&&m) titleEl.textContent=`${y}년 ${m}월`;
@@ -681,7 +682,7 @@ function renderListGroups(future, past, scroll){
   if(window._listScrollHandler) scroll.removeEventListener('scroll',window._listScrollHandler);
   window._listScrollHandler=updateTitle;
   scroll.addEventListener('scroll',updateTitle);
-  setTimeout(updateTitle,200); // 초기 렌더 후 1회 실행
+  setTimeout(updateTitle,200);
 }
 
 /* ── 데이터 로드 ── */
