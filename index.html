@@ -150,7 +150,7 @@ const MONTHS=['','January','February','March','April','May','June',
 const today=new Date(); today.setHours(0,0,0,0);
 const now=new Date();
 let curYear=now.getFullYear(), curMonth=now.getMonth()+1;
-let allCourses=[], hidePast=false, activeFilter=null;
+let allCourses=[], hidePast=false, activeFilter=null, scrollTarget=null;
 
 /* 레이아웃 상수
    SLOT_H: 슬롯 높이. BAR_H(9) + 라벨(10) + 여유(3) = 22 → 넉넉히 28
@@ -268,7 +268,10 @@ function renderCalendar(year,month,courses,prevSet=new Set(),nextSet=new Set()){
         tr.className='bt';
         tr.style.cssText=`left:${barL}%;width:${barW}%;top:${barTop}px;height:${BAR_H}px;background:${b.c.color};opacity:.82`;
         tr.title=b.c.round?`${b.c.name} ${b.c.round}`:b.c.name;
-        tr.onclick=()=>sw('list');
+        tr.onclick=(()=>{
+          const tName=b.c.name, tYear=curYear, tMonth=curMonth;
+          return ()=>{ scrollTarget={name:tName,year:tYear,month:tMonth}; sw('list'); };
+        })();
         ba.appendChild(tr);
 
         /* 라벨 */
@@ -276,7 +279,10 @@ function renderCalendar(year,month,courses,prevSet=new Set(),nextSet=new Set()){
         lb.className='bl';
         lb.style.cssText=`left:${barL}%;width:${barW}%;top:${lblTop}px;color:${b.c.color}`;
         lb.textContent=b.c.round?`${b.c.name} ${b.c.round}`:b.c.name;
-        lb.onclick=()=>sw('list');
+        lb.onclick=(()=>{
+          const tName=b.c.name, tYear=curYear, tMonth=curMonth;
+          return ()=>{ scrollTarget={name:tName,year:tYear,month:tMonth}; sw('list'); };
+        })();
         ba.appendChild(lb);
 
         /* 개강 원 */
@@ -405,7 +411,7 @@ function sw(v){
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
   document.getElementById(v).classList.add('on');
   document.querySelectorAll('.tb')[v==='cal'?0:1].classList.add('on');
-  if(v==='list') loadListData();
+  if(v==='list') loadListData(); // renderListGroups 안에서 scrollTarget 처리됨
 }
 
 /* ── 목록용 멀티월 로드 ── */
@@ -652,10 +658,33 @@ function renderListGroups(future, past, scroll){
     }
   }
 
-  // 오늘 기준선으로 스크롤
+  // scrollTarget이 있으면 해당 카드로, 없으면 오늘 기준선으로
   setTimeout(()=>{
-    if(todayMarker) todayMarker.scrollIntoView({block:'center',behavior:'smooth'});
-  },150);
+    if(scrollTarget){
+      // 과정명 + 대표월 기준으로 카드 찾기
+      const allCards=[...scroll.querySelectorAll('.card[data-month]')];
+      // dataset.courseName은 data-course-name 속성으로 저장됨
+      // 과정명만으로 매칭 (월/연도는 보조 조건)
+      const target=allCards.find(card=>{
+        const nameMatch=card.dataset.courseName===scrollTarget.name;
+        const monthMatch=parseInt(card.dataset.month)===scrollTarget.month;
+        const yearMatch=parseInt(card.dataset.year)===scrollTarget.year;
+        return nameMatch && yearMatch && monthMatch;
+      }) || allCards.find(card=>card.dataset.courseName===scrollTarget.name);
+      if(target){
+        target.scrollIntoView({block:'center',behavior:'smooth'});
+        // 하이라이트 효과
+        target.style.transition='box-shadow .3s';
+        target.style.boxShadow=`0 0 0 2px ${target.querySelector('.cbar').style.background}`;
+        setTimeout(()=>{ target.style.boxShadow=''; },1500);
+      } else if(todayMarker){
+        todayMarker.scrollIntoView({block:'center',behavior:'smooth'});
+      }
+      scrollTarget=null; // 초기화
+    } else if(todayMarker){
+      todayMarker.scrollIntoView({block:'center',behavior:'smooth'});
+    }
+  },400);
 
   // 스크롤 이벤트: scroll 컨테이너 상단에 걸친 카드의 월을 타이틀에 표시
   const titleEl=document.getElementById('listTitle');
