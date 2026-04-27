@@ -443,10 +443,11 @@ async function loadListData(){
   scroll.innerHTML='<div class="empty-msg">불러오는 중...</div>';
   document.getElementById('listTitle').textContent='일정 목록';
 
-  // 범위: 현재월-2 ~ 현재월+12
+  // 범위: 오늘 기준 -6개월 ~ +12개월 (캘린더 월과 무관하게 고정)
+  const baseYear=now.getFullYear(), baseMonth=now.getMonth()+1;
   const targets=[];
-  for(let delta=-2; delta<=12; delta++){
-    let y=curYear, m=curMonth+delta;
+  for(let delta=-6; delta<=12; delta++){
+    let y=baseYear, m=baseMonth+delta;
     while(m>12){m-=12;y++;}
     while(m<1) {m+=12;y--;}
     targets.push({y,m});
